@@ -6,7 +6,11 @@ import { resumeEventSchema, type ResumeEvent, type ResumeRequest } from '../lib/
 
 type Usage = Extract<ResumeEvent, { type: 'done' }>['usage'];
 
-export type AnalysisStep = Omit<Extract<ResumeEvent, { type: 'step' }>, 'type'>;
+/** startedAt·finishedAt: 브라우저에 단계가 처음 도착한 시각과 끝난 시각(ms) */
+export type AnalysisStep = Omit<Extract<ResumeEvent, { type: 'step' }>, 'type'> & {
+  startedAt: number;
+  finishedAt?: number;
+};
 
 type Progress = { text: string; steps: AnalysisStep[]; mock: boolean };
 
@@ -19,11 +23,15 @@ export type ResumeDraftState =
   /** loginRequired: 로그인하지 않아 서버가 거절했다 */
   | ({ status: 'error'; message: string; loginRequired: boolean } & Progress);
 
+type StepUpdate = Omit<AnalysisStep, 'startedAt' | 'finishedAt'>;
+
 /** 같은 id의 단계는 자리를 지키며 갱신하고, 새 단계는 끝에 붙인다. */
-function upsertStep(steps: AnalysisStep[], next: AnalysisStep): AnalysisStep[] {
+function upsertStep(steps: AnalysisStep[], next: StepUpdate, now: number): AnalysisStep[] {
+  const finishedAt = next.status === 'done' ? now : undefined;
   const index = steps.findIndex(step => step.id === next.id);
-  if (index === -1) return [...steps, next];
-  const merged = { ...steps[index], ...next, detail: next.detail ?? steps[index].detail };
+  if (index === -1) return [...steps, { ...next, startedAt: now, finishedAt }];
+  const prev = steps[index];
+  const merged = { ...prev, ...next, detail: next.detail ?? prev.detail, finishedAt: prev.finishedAt ?? finishedAt };
   return steps.map((step, i) => (i === index ? merged : step));
 }
 
@@ -95,7 +103,7 @@ export function useResumeDraft() {
               break;
             case 'step': {
               const { id, label, status, detail } = event.data;
-              steps = upsertStep(steps, { id, label, status, detail });
+              steps = upsertStep(steps, { id, label, status, detail }, Date.now());
               setState({ status: 'streaming', ...progress() });
               break;
             }
