@@ -5,6 +5,11 @@ test('홈에서 GitHub 로그인을 시작할 수 있다', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'shipped' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'GitHub로 시작하기' })).toHaveAttribute('href', '/api/auth/login');
+  // 로그아웃 후 다른 계정으로 들어갈 수 있도록 계정 선택 화면을 띄우는 링크
+  await expect(page.getByRole('link', { name: '다른 GitHub 계정으로 로그인' })).toHaveAttribute(
+    'href',
+    '/api/auth/login?select_account=1',
+  );
 });
 
 /** /local에 git log를 올리고 내 이메일을 고른다. */

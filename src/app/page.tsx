@@ -1,4 +1,4 @@
-import { Alert, Container, Skeleton, Stack, Typography } from '@bestow-ui/react';
+import { Alert, Container, Link, Skeleton, Stack, Typography } from '@bestow-ui/react';
 import { Suspense } from 'react';
 import { ButtonLink } from '@/components/ui/ButtonLink';
 import { getSession } from '@/server/session';
@@ -48,9 +48,17 @@ async function AuthAction({ searchParams }: Pick<PageProps<'/'>, 'searchParams'>
         </ButtonLink>
       ) : (
         // Route Handler로 이동하므로 프리페치하지 않는 a를 쓴다.
-        <ButtonLink href="/api/auth/login" size="lg" native>
-          GitHub로 시작하기
-        </ButtonLink>
+        <Stack gap={3} align="start">
+          <ButtonLink href="/api/auth/login" size="lg" native>
+            GitHub로 시작하기
+          </ButtonLink>
+          {/* GitHub에 로그인된 계정이 아닌 다른 계정으로 들어갈 때. 계정 선택 화면을 띄운다. */}
+          <Typography variant="body-sm" color="muted">
+            <Link href="/api/auth/login?select_account=1" color="inherit">
+              다른 GitHub 계정으로 로그인
+            </Link>
+          </Typography>
+        </Stack>
       )}
     </Stack>
   );

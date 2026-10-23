@@ -8,12 +8,17 @@ export function getCallbackUrl(): string {
   return new URL('/api/auth/callback', getEnv().APP_URL).toString();
 }
 
-/** GitHub App은 scope를 받지 않는다. 권한은 앱 설정의 Permissions로 정해진다. */
-export function buildAuthorizeUrl(state: string): string {
+/**
+ * GitHub App은 scope를 받지 않는다. 권한은 앱 설정의 Permissions로 정해진다.
+ * selectAccount면 계정 선택 화면을 띄운다. 없으면 GitHub에 로그인된 계정으로 바로 승인돼서,
+ * 로그아웃한 뒤에도 같은 계정으로 다시 들어온다.
+ */
+export function buildAuthorizeUrl(state: string, { selectAccount = false }: { selectAccount?: boolean } = {}): string {
   const url = new URL('https://github.com/login/oauth/authorize');
   url.searchParams.set('client_id', getEnv().GITHUB_APP_CLIENT_ID);
   url.searchParams.set('redirect_uri', getCallbackUrl());
   url.searchParams.set('state', state);
+  if (selectAccount) url.searchParams.set('prompt', 'select_account');
   return url.toString();
 }
 
