@@ -6,14 +6,26 @@ import { resumeEventSchema, type ResumeEvent, type ResumeRequest } from '../lib/
 
 type Usage = Extract<ResumeEvent, { type: 'done' }>['usage'];
 
-/** mock: Claude 대신 개발용 가짜 응답을 받았다 */
+export type AnalysisStep = Omit<Extract<ResumeEvent, { type: 'step' }>, 'type'>;
+
+type Progress = { text: string; steps: AnalysisStep[]; mock: boolean };
+
+/** mock: Claude 대신 개발용 가짜 응답을 받았다. steps: 분석 단계(도착 순) */
 export type ResumeDraftState =
   | { status: 'idle' }
-  | { status: 'streaming'; text: string; mock: boolean }
-  | { status: 'done'; text: string; mock: boolean; truncated: boolean; usage: Usage }
-  | { status: 'stopped'; text: string; mock: boolean }
+  | ({ status: 'streaming' } & Progress)
+  | ({ status: 'done'; truncated: boolean; usage: Usage } & Progress)
+  | ({ status: 'stopped' } & Progress)
   /** loginRequired: 로그인하지 않아 서버가 거절했다 */
-  | { status: 'error'; text: string; mock: boolean; message: string; loginRequired: boolean };
+  | ({ status: 'error'; message: string; loginRequired: boolean } & Progress);
+
+/** 같은 id의 단계는 자리를 지키며 갱신하고, 새 단계는 끝에 붙인다. */
+function upsertStep(steps: AnalysisStep[], next: AnalysisStep): AnalysisStep[] {
+  const index = steps.findIndex(step => step.id === next.id);
+  if (index === -1) return [...steps, next];
+  const merged = { ...steps[index], ...next, detail: next.detail ?? steps[index].detail };
+  return steps.map((step, i) => (i === index ? merged : step));
+}
 
 const errorBodySchema = z.object({ message: z.string() });
 
@@ -41,10 +53,12 @@ export function useResumeDraft() {
     controllerRef.current = controller;
     let text = '';
     let mock = false;
-    setState({ status: 'streaming', text, mock });
+    let steps: AnalysisStep[] = [];
+    const progress = (): Progress => ({ text, steps, mock });
+    setState({ status: 'streaming', ...progress() });
 
     const fail = (message: string, loginRequired = false) =>
-      setState({ status: 'error', text, mock, message, loginRequired });
+      setState({ status: 'error', ...progress(), message, loginRequired });
 
     try {
       const response = await fetch('/api/resume', {
@@ -77,17 +91,22 @@ export function useResumeDraft() {
           switch (event.data.type) {
             case 'start':
               mock = event.data.mock;
-              setState({ status: 'streaming', text, mock });
+              setState({ status: 'streaming', ...progress() });
               break;
+            case 'step': {
+              const { id, label, status, detail } = event.data;
+              steps = upsertStep(steps, { id, label, status, detail });
+              setState({ status: 'streaming', ...progress() });
+              break;
+            }
             case 'text':
               text += event.data.text;
-              setState({ status: 'streaming', text, mock });
+              setState({ status: 'streaming', ...progress() });
               break;
             case 'done':
               setState({
                 status: 'done',
-                text,
-                mock,
+                ...progress(),
                 truncated: event.data.stopReason === 'max_tokens',
                 usage: event.data.usage,
               });
@@ -102,7 +121,7 @@ export function useResumeDraft() {
       fail('응답이 중간에 끊겼어요. 다시 시도해 주세요.');
     } catch (error) {
       if (controller.signal.aborted) {
-        setState({ status: 'stopped', text, mock });
+        setState({ status: 'stopped', ...progress() });
       } else {
         console.error('[useResumeDraft]', error);
         fail('서버에 연결하지 못했어요. 네트워크를 확인하고 다시 시도해 주세요.');

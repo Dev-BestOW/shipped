@@ -1,5 +1,6 @@
 import 'server-only';
 import type { ResumeEvent, ResumeRequest } from '@/features/resume/lib/schema';
+import { findCommits, summarizeWorkAreas } from './analysis';
 
 /**
  * 가짜 응답 모드. Claude를 부르지 않고 미리 정한 틀의 초안을 스트리밍한다.
@@ -11,8 +12,8 @@ export function isResumeMockMode(): boolean {
   return !process.env.ANTHROPIC_API_KEY && process.env.NODE_ENV !== 'production';
 }
 
-/** 생각하는 시간처럼 보이도록 첫 글자 전에 기다린다. */
-const FIRST_TOKEN_DELAY_MS = 1500;
+/** 단계 사이 대기 시간. 실제 Claude보다 훨씬 짧게 둔다. */
+const STEP_DELAY_MS = 700;
 const CHUNK_DELAY_MS = 25;
 const CHUNK_SIZE = 6;
 
@@ -65,13 +66,45 @@ ${achievements.join('\n\n')}
 `;
 }
 
-/** streamResumeDraft와 같은 이벤트를 내보낸다. */
+/**
+ * streamResumeDraft와 같은 순서로 이벤트를 내보낸다 (받기 → 생각 → 도구 → 생각 → 도구 → 쓰기).
+ * 단계 설명의 숫자는 실제 분석 함수로 계산한 값이다.
+ */
 export async function* streamMockResumeDraft(input: ResumeRequest, signal: AbortSignal): AsyncGenerator<ResumeEvent> {
   const draft = buildMockDraft(input);
-  await sleep(FIRST_TOKEN_DELAY_MS, signal);
+  const areas = summarizeWorkAreas(input.commits, 2, 20);
+  const shas = input.commits.slice(0, 5).map(commit => commit.sha.slice(0, 7));
+  const { found } = findCommits(input.commits, shas);
+  const fileCount = found.reduce((sum, commit) => sum + (commit.lineStats?.files.length ?? 0), 0);
+
+  yield { type: 'step', id: 'received', label: '커밋 받기', status: 'done', detail: `내 커밋 ${input.commits.length}개` };
+
+  const steps: { id: string; label: string; detail?: string }[] = [
+    { id: 'think-0', label: '커밋을 읽고 분석 방향 잡기' },
+    {
+      id: 'mock-areas',
+      label: '작업 영역 살펴보기',
+      detail: areas.length > 0 ? `폴더 ${areas.length}곳 · 가장 많이 바꾼 곳 ${areas[0].area}` : '파일 정보 없음',
+    },
+    { id: 'think-1', label: '확인한 내용 정리하기' },
+    {
+      id: 'mock-files',
+      label: shas.length > 1 ? `커밋 ${shas[0]} 외 ${shas.length - 1}개의 변경 파일 확인` : `커밋 ${shas[0]}의 변경 파일 확인`,
+      detail: `파일 ${fileCount}개`,
+    },
+    { id: 'think-2', label: '확인한 내용 정리하기' },
+  ];
+  for (const step of steps) {
+    yield { type: 'step', id: step.id, label: step.label, status: 'running' };
+    await sleep(STEP_DELAY_MS, signal);
+    yield { type: 'step', id: step.id, label: step.label, status: 'done', detail: step.detail };
+  }
+
+  yield { type: 'step', id: 'write', label: '초안 쓰기', status: 'running' };
   for (let i = 0; i < draft.length; i += CHUNK_SIZE) {
     yield { type: 'text', text: draft.slice(i, i + CHUNK_SIZE) };
     await sleep(CHUNK_DELAY_MS, signal);
   }
+  yield { type: 'step', id: 'write', label: '초안 쓰기', status: 'done' };
   yield { type: 'done', stopReason: 'end_turn', usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 } };
 }

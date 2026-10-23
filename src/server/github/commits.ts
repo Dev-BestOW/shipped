@@ -1,6 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
-import type { ContributionCommit, LineStats } from '@/features/repos/lib/contribution';
+import { MAX_FILES_PER_COMMIT, type ContributionCommit, type LineStats } from '@/features/repos/lib/contribution';
 import { isLockfile } from '@/features/repos/lib/excluded-files';
 import { githubGet, githubGraphql } from './api';
 
@@ -113,7 +113,7 @@ const commitFilesSchema = z.object({
  * GraphQL은 커밋 단위 합계만 주므로 REST 상세 API의 파일별 값을 쓴다.
  */
 async function getLineStats(token: string, repo: string, sha: string): Promise<LineStats> {
-  const stats: LineStats = { additions: 0, deletions: 0, changedFiles: 0 };
+  const stats: LineStats = { additions: 0, deletions: 0, changedFiles: 0, files: [] };
   for (let page = 1; page <= MAX_FILE_PAGES; page++) {
     const { files = [] } = await githubGet(
       token,
@@ -125,6 +125,9 @@ async function getLineStats(token: string, repo: string, sha: string): Promise<L
       stats.additions += file.additions;
       stats.deletions += file.deletions;
       stats.changedFiles++;
+      if (stats.files.length < MAX_FILES_PER_COMMIT) {
+        stats.files.push({ path: file.filename, additions: file.additions, deletions: file.deletions });
+      }
     }
     if (files.length < FILES_PAGE_SIZE) break;
   }

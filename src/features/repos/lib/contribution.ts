@@ -1,8 +1,19 @@
-/** 변경 줄 수와 파일 수. lockfile은 뺀다 (excluded-files.ts) */
+/** 커밋 하나에서 바뀐 파일. 경로와 줄 수만 담고 코드 내용은 담지 않는다. */
+export type CommitFile = {
+  path: string;
+  additions: number;
+  deletions: number;
+};
+
+/** 커밋 하나에 담는 파일 수 상한. 넘으면 앞쪽만 담고 changedFiles에 실제 수를 남긴다. */
+export const MAX_FILES_PER_COMMIT = 300;
+
+/** 변경 줄 수와 파일. lockfile은 뺀다 (excluded-files.ts) */
 export type LineStats = {
   additions: number;
   deletions: number;
   changedFiles: number;
+  files: CommitFile[];
 };
 
 /**
@@ -34,7 +45,7 @@ export type ContributionSummary = {
   firstAt: string | null;
   lastAt: string | null;
   /** 커밋 하나라도 줄 수를 아직 세는 중이면 null */
-  lineTotals: Omit<LineStats, 'changedFiles'> | null;
+  lineTotals: Pick<LineStats, 'additions' | 'deletions'> | null;
   /** 커밋이 있었던 달만, 오래된 순 */
   monthly: MonthlyCount[];
 };

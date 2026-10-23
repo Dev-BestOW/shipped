@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ContributionCommit, LineStats } from './contribution';
+import { MAX_FILES_PER_COMMIT, type ContributionCommit, type LineStats } from './contribution';
 import { isLockfile } from './excluded-files';
 
 /**
@@ -72,14 +72,19 @@ export function parseGitLog(text: string): ParsedGitLog {
     }
     const [sha, authorName, authorEmail, authoredAt, rawMessage] = header.data;
 
-    const lineStats: LineStats = { additions: 0, deletions: 0, changedFiles: 0 };
+    const lineStats: LineStats = { additions: 0, deletions: 0, changedFiles: 0, files: [] };
     for (const line of record.slice(endOfMessage + 1).split('\n')) {
       const match = /^(\d+|-)\t(\d+|-)\t(.+)$/.exec(line);
-      if (!match || isLockfile(renamedPath(match[3]))) continue;
-      lineStats.changedFiles++;
+      if (!match) continue;
+      const path = renamedPath(match[3]);
+      if (isLockfile(path)) continue;
       // 바이너리 파일은 줄 수가 '-'로 나온다.
-      lineStats.additions += match[1] === '-' ? 0 : Number(match[1]);
-      lineStats.deletions += match[2] === '-' ? 0 : Number(match[2]);
+      const additions = match[1] === '-' ? 0 : Number(match[1]);
+      const deletions = match[2] === '-' ? 0 : Number(match[2]);
+      lineStats.changedFiles++;
+      lineStats.additions += additions;
+      lineStats.deletions += deletions;
+      if (lineStats.files.length < MAX_FILES_PER_COMMIT) lineStats.files.push({ path, additions, deletions });
     }
 
     const message = rawMessage.trim();
