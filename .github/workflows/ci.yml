@@ -17,8 +17,8 @@ jobs:
       GITHUB_APP_SLUG: ci-app
       RESUME_MOCK: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -26,12 +26,13 @@ jobs:
       - name: 세션 암호화 키 생성
         run: echo "SESSION_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")" >> "$GITHUB_ENV"
       - run: npm run lint
-      - run: npx tsc --noEmit
+      # PageProps 같은 라우트 타입은 .next/types에 생성되는 파일이라 먼저 만든다.
+      - run: npm run typecheck
       - run: npm test
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
