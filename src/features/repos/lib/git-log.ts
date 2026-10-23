@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ContributionCommit } from './contribution';
+import type { ContributionCommit, LineStats } from './contribution';
 import { isLockfile } from './excluded-files';
 
 /**
@@ -72,16 +72,14 @@ export function parseGitLog(text: string): ParsedGitLog {
     }
     const [sha, authorName, authorEmail, authoredAt, rawMessage] = header.data;
 
-    let additions = 0;
-    let deletions = 0;
-    let changedFiles = 0;
+    const lineStats: LineStats = { additions: 0, deletions: 0, changedFiles: 0 };
     for (const line of record.slice(endOfMessage + 1).split('\n')) {
       const match = /^(\d+|-)\t(\d+|-)\t(.+)$/.exec(line);
       if (!match || isLockfile(renamedPath(match[3]))) continue;
-      changedFiles++;
+      lineStats.changedFiles++;
       // 바이너리 파일은 줄 수가 '-'로 나온다.
-      additions += match[1] === '-' ? 0 : Number(match[1]);
-      deletions += match[2] === '-' ? 0 : Number(match[2]);
+      lineStats.additions += match[1] === '-' ? 0 : Number(match[1]);
+      lineStats.deletions += match[2] === '-' ? 0 : Number(match[2]);
     }
 
     const message = rawMessage.trim();
@@ -90,10 +88,8 @@ export function parseGitLog(text: string): ParsedGitLog {
       headline: message.split('\n', 1)[0] ?? '',
       message,
       authoredAt,
-      additions,
-      deletions,
-      changedFiles,
       url: null,
+      lineStats,
       authorName,
       authorEmail: authorEmail.trim().toLowerCase(),
     });

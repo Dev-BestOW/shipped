@@ -1,6 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
-import type { ContributionCommit } from '@/features/repos/lib/contribution';
+import type { ContributionCommit, LineStats } from '@/features/repos/lib/contribution';
 import { isLockfile } from '@/features/repos/lib/excluded-files';
 import { githubGet, githubGraphql } from './api';
 
@@ -108,8 +108,6 @@ const commitFilesSchema = z.object({
     .optional(),
 });
 
-type LineStats = Pick<ContributionCommit, 'additions' | 'deletions' | 'changedFiles'>;
-
 /**
  * 커밋의 변경 줄 수를 lockfile을 빼고 센다.
  * GraphQL은 커밋 단위 합계만 주므로 REST 상세 API의 파일별 값을 쓴다.
@@ -161,13 +159,16 @@ export type RepoContribution = {
   totalCommits: number;
   /** 기본 브랜치에서 내가 작성한 커밋 수 (머지 커밋 포함) */
   myTotalCommits: number;
-  /** 머지 커밋을 뺀 내 커밋. 최신순, 최대 PAGE_SIZE × MAX_PAGES개. 변경 줄 수에서 lockfile은 뺀다. */
+  /**
+   * 머지 커밋을 뺀 내 커밋. 최신순, 최대 PAGE_SIZE × MAX_PAGES개.
+   * 변경 줄 수는 느려서 비워 두고(null) addLineStats로 따로 채운다.
+   */
   commits: ContributionCommit[];
   /** 내 커밋이 많아 일부만 가져왔으면 true */
   truncated: boolean;
 };
 
-/** 레포에 접근할 수 없으면 null. */
+/** 레포에 접근할 수 없으면 null. GraphQL 몇 번으로 끝나서 빠르다. */
 export async function getMyRepoContribution(
   token: string,
   owner: string,
@@ -208,14 +209,13 @@ export async function getMyRepoContribution(
   }
 
   if (!first) return null;
-  const repo = first.nameWithOwner;
-  const commits = await mapWithConcurrency(nodes, DETAIL_CONCURRENCY, async node => ({
+  const commits = nodes.map(node => ({
     sha: node.oid,
     headline: node.messageHeadline,
     message: node.message,
     authoredAt: node.authoredDate,
     url: node.url,
-    ...(await getLineStats(token, repo, node.oid)),
+    lineStats: null,
   }));
 
   const branch = first.defaultBranchRef;
@@ -229,4 +229,19 @@ export async function getMyRepoContribution(
     commits,
     truncated,
   };
+}
+
+/**
+ * 커밋마다 상세 API를 불러 변경 줄 수를 채운다. 커밋 수만큼 요청하므로 느리다.
+ * @param repo `owner/name` (RepoContribution.fullName)
+ */
+export function addLineStats(
+  token: string,
+  repo: string,
+  commits: readonly ContributionCommit[],
+): Promise<ContributionCommit[]> {
+  return mapWithConcurrency(commits, DETAIL_CONCURRENCY, async commit => ({
+    ...commit,
+    lineStats: commit.lineStats ?? (await getLineStats(token, repo, commit.sha)),
+  }));
 }

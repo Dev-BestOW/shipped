@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { ContributionCommit, ContributionSummary } from '../lib/contribution';
+import type { ContributionCommit, ContributionSummary, LineStats } from '../lib/contribution';
 
 /** 처음에 펼쳐 보여 줄 커밋 수. 나머지는 접어 둔다. */
 const VISIBLE_COMMITS = 30;
@@ -54,10 +54,16 @@ export function ContributionReport({
         </Stat>
         <Stat label="활동한 달">{numberFormatter.format(summary.monthly.length)}개월</Stat>
         <Stat label="변경한 줄 (lockfile 제외)">
-          <span className="text-base">
-            <span className="text-green-700 dark:text-green-400">+{numberFormatter.format(summary.additions)}</span>{' '}
-            <span className="text-red-700 dark:text-red-400">−{numberFormatter.format(summary.deletions)}</span>
-          </span>
+          {summary.lineTotals ? (
+            <span className="text-base">
+              <LineDelta stats={summary.lineTotals} />
+            </span>
+          ) : (
+            <span role="status" className="flex flex-col gap-1">
+              <span className="block h-6 w-28 animate-pulse rounded bg-black/10 dark:bg-white/10" />
+              <span className="text-xs font-normal text-zinc-500">커밋마다 세는 중이에요…</span>
+            </span>
+          )}
         </Stat>
         {share && share.total > 0 && (
           <Stat label="전체 커밋 중 비중">
@@ -102,6 +108,15 @@ function Stat({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+function LineDelta({ stats }: { stats: Pick<LineStats, 'additions' | 'deletions'> }) {
+  return (
+    <>
+      <span className="text-green-700 dark:text-green-400">+{numberFormatter.format(stats.additions)}</span>{' '}
+      <span className="text-red-700 dark:text-red-400">−{numberFormatter.format(stats.deletions)}</span>
+    </>
+  );
+}
+
 function CommitList({ commits }: { commits: readonly ContributionCommit[] }) {
   return (
     <ul className="divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/15 dark:border-white/15">
@@ -111,10 +126,13 @@ function CommitList({ commits }: { commits: readonly ContributionCommit[] }) {
             {commit.headline}
           </span>
           <span className="flex shrink-0 items-baseline gap-3 text-xs text-zinc-500">
-            <span>
-              <span className="text-green-700 dark:text-green-400">+{numberFormatter.format(commit.additions)}</span>{' '}
-              <span className="text-red-700 dark:text-red-400">−{numberFormatter.format(commit.deletions)}</span>
-            </span>
+            {commit.lineStats ? (
+              <span>
+                <LineDelta stats={commit.lineStats} />
+              </span>
+            ) : (
+              <span aria-hidden className="inline-block h-3 w-14 animate-pulse rounded bg-black/10 dark:bg-white/10" />
+            )}
             <time dateTime={commit.authoredAt}>{dateFormatter.format(new Date(commit.authoredAt))}</time>
             {commit.url ? (
               <a href={commit.url} target="_blank" rel="noopener noreferrer" className="font-mono hover:underline">

@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Suspense, type ComponentProps } from 'react';
 import { ContributionReport } from '@/features/repos/components/ContributionReport';
-import { summarizeContribution } from '@/features/repos/lib/contribution';
-import { getMyRepoContribution } from '@/server/github/commits';
+import { summarizeContribution, type ContributionCommit } from '@/features/repos/lib/contribution';
+import { addLineStats, getMyRepoContribution } from '@/server/github/commits';
 import { requireSession, withTokenRefresh } from '@/server/session';
 
 /** GitHub 계정·레포 이름에 쓸 수 있는 문자 */
@@ -24,7 +25,12 @@ export default async function RepoContributionPage({ params }: PageProps<'/repos
   );
   if (!contribution) notFound();
 
-  const summary = summarizeContribution(contribution.commits);
+  const reportProps = {
+    share: { mine: contribution.myTotalCommits, total: contribution.totalCommits },
+    truncatedNote: contribution.truncated
+      ? `내 커밋이 많아 최근 ${contribution.commits.length.toLocaleString('ko-KR')}개만 분석했어요.`
+      : undefined,
+  };
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-12">
@@ -46,16 +52,24 @@ export default async function RepoContributionPage({ params }: PageProps<'/repos
       </div>
 
       {contribution.defaultBranch ? (
-        <ContributionReport
-          summary={summary}
-          commits={contribution.commits}
-          share={{ mine: contribution.myTotalCommits, total: contribution.totalCommits }}
-          truncatedNote={
-            contribution.truncated
-              ? `내 커밋이 많아 최근 ${contribution.commits.length.toLocaleString('ko-KR')}개만 분석했어요.`
-              : undefined
+        // 커밋 목록은 바로 보여 주고, 커밋마다 상세 API가 필요한 변경 줄 수는 다 세면 채워 넣는다.
+        <Suspense
+          fallback={
+            <ContributionReport
+              summary={summarizeContribution(contribution.commits)}
+              commits={contribution.commits}
+              {...reportProps}
+            />
           }
-        />
+        >
+          <ReportWithLineStats
+            token={session.accessToken}
+            repo={contribution.fullName}
+            commits={contribution.commits}
+            returnTo={returnTo}
+            reportProps={reportProps}
+          />
+        </Suspense>
       ) : (
         <div className="rounded-xl border border-dashed border-black/15 px-6 py-10 dark:border-white/20">
           <p className="font-medium">아직 커밋이 없는 빈 레포예요.</p>
@@ -63,4 +77,21 @@ export default async function RepoContributionPage({ params }: PageProps<'/repos
       )}
     </main>
   );
+}
+
+async function ReportWithLineStats({
+  token,
+  repo,
+  commits,
+  returnTo,
+  reportProps,
+}: {
+  token: string;
+  repo: string;
+  commits: ContributionCommit[];
+  returnTo: string;
+  reportProps: Pick<ComponentProps<typeof ContributionReport>, 'share' | 'truncatedNote'>;
+}) {
+  const withStats = await withTokenRefresh(returnTo, () => addLineStats(token, repo, commits));
+  return <ContributionReport summary={summarizeContribution(withStats)} commits={withStats} {...reportProps} />;
 }
