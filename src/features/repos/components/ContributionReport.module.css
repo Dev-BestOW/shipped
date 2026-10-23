@@ -1,0 +1,35 @@
+.stats {
+  margin: 0;
+}
+
+.stat {
+  gap: var(--bestow-space-1);
+}
+
+.statValue {
+  margin: 0;
+}
+
+.block {
+  display: block;
+}
+
+.headline {
+  flex: 1;
+  min-width: 0;
+}
+
+.sha {
+  font-family: var(--bestow-font-family-mono);
+}
+
+.more {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bestow-space-3);
+}
+
+.more > summary {
+  cursor: pointer;
+  margin-bottom: var(--bestow-space-3);
+}

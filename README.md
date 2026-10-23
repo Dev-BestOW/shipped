@@ -31,7 +31,7 @@ shipped는 레포에서 **본인 커밋만** 추려 내고, 그 근거로 경력
 | 영역 | 사용 기술 |
 | --- | --- |
 | 프레임워크 | Next.js 16 (App Router), React 19, TypeScript |
-| 스타일 | Tailwind CSS 4 |
+| UI | [@bestow-ui/react](https://github.com/Dev-BestOW/BestOW-UI) (직접 만든 디자인 시스템), CSS Modules, Pretendard |
 | LLM | Vercel AI SDK, Claude |
 | 인증·데이터 | GitHub OAuth, GitHub REST API |
 | 테스트 | Vitest, Playwright |

@@ -1,20 +1,26 @@
-import Image from 'next/image';
-import Link from 'next/link';
+import { Avatar, Button, Container, Link, Stack, Typography } from '@bestow-ui/react';
+import NextLink from 'next/link';
 import { Suspense } from 'react';
 import { getSession } from '@/server/session';
+import styles from './SiteHeader.module.css';
 
 export function SiteHeader() {
   return (
-    <header className="border-b border-black/10 dark:border-white/15">
-      <div className="mx-auto flex h-14 w-full max-w-4xl items-center justify-between px-6">
-        <Link href="/" className="font-bold tracking-tight">
-          shipped
-        </Link>
-        {/* 세션은 요청 시점에 읽으므로 정적 셸과 분리해 스트리밍한다. */}
-        <Suspense fallback={null}>
-          <UserMenu />
-        </Suspense>
-      </div>
+    <header className={styles.header}>
+      <Container size="md">
+        <Stack direction="row" align="center" justify="between" className={styles.bar}>
+          {/* 서버 컴포넌트에서는 함수를 넘길 수 없어 as 대신 asChild로 Next 링크를 감싼다. */}
+          <Link asChild color="inherit" underline="hover">
+            <NextLink href="/" className={styles.logo}>
+              shipped
+            </NextLink>
+          </Link>
+          {/* 세션은 요청 시점에 읽으므로 정적 셸과 분리해 스트리밍한다. */}
+          <Suspense fallback={null}>
+            <UserMenu />
+          </Suspense>
+        </Stack>
+      </Container>
     </header>
   );
 }
@@ -23,18 +29,18 @@ async function UserMenu() {
   const session = await getSession();
   if (!session) return null;
 
+  const displayName = session.user.name ?? session.user.login;
   return (
-    <div className="flex items-center gap-3 text-sm">
-      <Image src={session.user.avatarUrl} alt="" width={28} height={28} className="rounded-full" />
-      <span className="font-medium">{session.user.name ?? session.user.login}</span>
+    <Stack direction="row" align="center" gap={3}>
+      <Avatar src={session.user.avatarUrl} name={displayName} alt="" size="sm" />
+      <Typography variant="body-sm" weight="medium" as="span">
+        {displayName}
+      </Typography>
       <form action="/api/auth/logout" method="post">
-        <button
-          type="submit"
-          className="rounded-full border border-black/10 px-3 py-1 text-zinc-600 transition-colors hover:bg-black/5 dark:border-white/15 dark:text-zinc-400 dark:hover:bg-white/10"
-        >
+        <Button type="submit" variant="outline" color="neutral" size="sm">
           로그아웃
-        </button>
+        </Button>
       </form>
-    </div>
+    </Stack>
   );
 }

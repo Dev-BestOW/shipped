@@ -1,5 +1,6 @@
-import Link from 'next/link';
+import { Alert, Container, Skeleton, Stack, Typography } from '@bestow-ui/react';
 import { Suspense } from 'react';
+import { ButtonLink } from '@/components/ui/ButtonLink';
 import { getSession } from '@/server/session';
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -10,24 +11,23 @@ const ERROR_MESSAGES: Record<string, string> = {
   session_expired: '로그인이 만료됐어요. 다시 로그인해 주세요.',
 };
 
-const ctaClassName =
-  'w-fit rounded-full bg-foreground px-6 py-3 font-medium text-background transition-opacity hover:opacity-85';
-
 export default function Home({ searchParams }: PageProps<'/'>) {
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-8 px-6 py-24">
-      <div className="flex flex-col gap-4">
-        <h1 className="text-4xl font-bold tracking-tight">shipped</h1>
-        <p className="text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-          커밋 이력을 근거로 &ldquo;문제 → 해결 → 결과&rdquo; 형식의 경력기술서 초안을 만들어 드려요.
-        </p>
-      </div>
+    <Container as="main" id="main" size="md" style={{ paddingBlock: 96 }}>
+      <Stack gap={8}>
+        <Stack gap={4}>
+          <Typography variant="display">shipped</Typography>
+          <Typography variant="body-lg" color="muted">
+            커밋 이력을 근거로 &ldquo;문제 → 해결 → 결과&rdquo; 형식의 경력기술서 초안을 만들어 드려요.
+          </Typography>
+        </Stack>
 
-      {/* 세션과 searchParams는 요청 시점에 읽으므로 정적 셸과 분리해 스트리밍한다. */}
-      <Suspense fallback={<div className="h-12 w-44 animate-pulse rounded-full bg-black/10 dark:bg-white/10" />}>
-        <AuthAction searchParams={searchParams} />
-      </Suspense>
-    </main>
+        {/* 세션과 searchParams는 요청 시점에 읽으므로 정적 셸과 분리해 스트리밍한다. */}
+        <Suspense fallback={<Skeleton variant="rect" width={176} height={48} />}>
+          <AuthAction searchParams={searchParams} />
+        </Suspense>
+      </Stack>
+    </Container>
   );
 }
 
@@ -36,22 +36,22 @@ async function AuthAction({ searchParams }: Pick<PageProps<'/'>, 'searchParams'>
   const errorMessage = typeof error === 'string' ? ERROR_MESSAGES[error] : undefined;
 
   return (
-    <div className="flex flex-col gap-4">
+    <Stack gap={4} align="start">
       {errorMessage && (
-        <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+        <Alert color="danger" role="alert">
           {errorMessage}
-        </p>
+        </Alert>
       )}
       {session ? (
-        <Link href="/repos" className={ctaClassName}>
+        <ButtonLink href="/repos" size="lg">
           내 레포 보기
-        </Link>
+        </ButtonLink>
       ) : (
-        // Route Handler로 이동하므로 Link(프리페치) 대신 a를 쓴다.
-        <a href="/api/auth/login" className={ctaClassName}>
+        // Route Handler로 이동하므로 프리페치하지 않는 a를 쓴다.
+        <ButtonLink href="/api/auth/login" size="lg" native>
           GitHub로 시작하기
-        </a>
+        </ButtonLink>
       )}
-    </div>
+    </Stack>
   );
 }

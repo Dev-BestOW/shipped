@@ -1,6 +1,8 @@
-import Link from 'next/link';
+import { Link } from '@bestow-ui/react';
+import NextLink from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense, type ComponentProps } from 'react';
+import { EmptyState, Page, PageHeader } from '@/components/ui/Page';
 import { ContributionReport } from '@/features/repos/components/ContributionReport';
 import { summarizeContribution, type ContributionCommit } from '@/features/repos/lib/contribution';
 import { addLineStats, getMyRepoContribution } from '@/server/github/commits';
@@ -33,23 +35,27 @@ export default async function RepoContributionPage({ params }: PageProps<'/repos
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-12">
-      <div className="flex flex-col gap-2">
-        <Link href="/repos" className="text-sm text-zinc-500 hover:underline">
-          ← 내 레포
-        </Link>
-        <h1 className="text-2xl font-bold tracking-tight">
-          <a href={contribution.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+    <Page>
+      <PageHeader
+        before={
+          <Link asChild color="neutral" underline="hover">
+            <NextLink href="/repos">← 내 레포</NextLink>
+          </Link>
+        }
+        title={
+          <Link href={contribution.url} color="inherit" underline="hover" external>
             {contribution.fullName}
-          </a>
-        </h1>
-        {contribution.defaultBranch && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            기본 브랜치 <code className="font-mono">{contribution.defaultBranch}</code>에서 내가 작성한 커밋만
-            모았어요. 머지 커밋과 다른 사람이 작성한 커밋은 빠져요.
-          </p>
-        )}
-      </div>
+          </Link>
+        }
+        description={
+          contribution.defaultBranch && (
+            <>
+              기본 브랜치 <code>{contribution.defaultBranch}</code>에서 내가 작성한 커밋만 모았어요. 머지 커밋과
+              다른 사람이 작성한 커밋은 빠져요.
+            </>
+          )
+        }
+      />
 
       {contribution.defaultBranch ? (
         // 커밋 목록은 바로 보여 주고, 커밋마다 상세 API가 필요한 변경 줄 수는 다 세면 채워 넣는다.
@@ -71,11 +77,9 @@ export default async function RepoContributionPage({ params }: PageProps<'/repos
           />
         </Suspense>
       ) : (
-        <div className="rounded-xl border border-dashed border-black/15 px-6 py-10 dark:border-white/20">
-          <p className="font-medium">아직 커밋이 없는 빈 레포예요.</p>
-        </div>
+        <EmptyState title="아직 커밋이 없는 빈 레포예요." />
       )}
-    </main>
+    </Page>
   );
 }
 

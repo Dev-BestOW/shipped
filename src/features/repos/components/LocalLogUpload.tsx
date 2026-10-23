@@ -1,6 +1,9 @@
 'use client';
 
-import { useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
+import { Alert, Button, Checkbox, FileUpload, Stack, Typography } from '@bestow-ui/react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { DividedList, DividedListItem } from '@/components/ui/DividedList';
+import { EmptyState } from '@/components/ui/Page';
 import { summarizeContribution } from '../lib/contribution';
 import {
   GIT_LOG_COMMAND,
@@ -11,6 +14,7 @@ import {
   type LocalCommit,
 } from '../lib/git-log';
 import { ContributionReport } from './ContributionReport';
+import styles from './LocalLogUpload.module.css';
 
 type UploadState =
   | { status: 'idle' }
@@ -22,13 +26,12 @@ export function LocalLogUpload() {
   const [state, setState] = useState<UploadState>({ status: 'idle' });
   const [selectedEmails, setSelectedEmails] = useState<ReadonlySet<string>>(new Set());
 
-  async function handleFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  async function handleFiles(files: File[]) {
     setSelectedEmails(new Set());
-
-    if (file.size > MAX_GIT_LOG_BYTES) {
-      setState({ status: 'error', message: '파일이 너무 커요. 30MB 이하로 올려 주세요.' });
+    const file = files[0];
+    // 목록에서 파일을 지운 경우
+    if (!file) {
+      setState({ status: 'idle' });
       return;
     }
 
@@ -49,20 +52,21 @@ export function LocalLogUpload() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <ol className="flex flex-col gap-6">
+    <Stack gap={8}>
+      <ol className={styles.steps}>
         <Step number={1} title="분석할 레포 폴더에서 아래 명령을 실행해 주세요">
           <CommandBox command={GIT_LOG_COMMAND} />
-          <p className="text-xs text-zinc-500">
+          <Typography variant="caption" color="muted">
             커밋 메시지, 작성자, 날짜, 파일별 변경 줄 수만 담겨요. 코드 내용은 들어가지 않아요.
-          </p>
+          </Typography>
         </Step>
         <Step number={2} title="만들어진 shipped-log.txt 파일을 올려 주세요">
-          <label className="flex w-fit cursor-pointer items-center gap-3 rounded-full border border-black/10 px-4 py-2 text-sm font-medium transition-colors hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10">
-            파일 선택
-            <input type="file" accept=".txt,.log,text/plain" onChange={handleFile} className="sr-only" />
-          </label>
-          <p className="text-xs text-zinc-500">파일은 브라우저 안에서만 읽어요. 서버로 보내거나 저장하지 않아요.</p>
+          <FileUpload
+            accept=".txt,.log,text/plain"
+            maxSize={MAX_GIT_LOG_BYTES}
+            onValueChange={handleFiles}
+            helperText="30MB까지 올릴 수 있어요. 파일은 브라우저 안에서만 읽고, 서버로 보내거나 저장하지 않아요."
+          />
           <UploadStatus state={state} />
         </Step>
       </ol>
@@ -74,20 +78,20 @@ export function LocalLogUpload() {
           onSelectedEmailsChange={setSelectedEmails}
         />
       )}
-    </div>
+    </Stack>
   );
 }
 
 function Step({ number, title, children }: { number: number; title: string; children: ReactNode }) {
   return (
-    <li className="flex gap-4">
-      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
+    <li className={styles.step}>
+      <span className={styles.stepNumber} aria-hidden>
         {number}
       </span>
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <p className="font-medium">{title}</p>
+      <Stack gap={3} className={styles.stepBody}>
+        <Typography weight="semibold">{title}</Typography>
         {children}
-      </div>
+      </Stack>
     </li>
   );
 }
@@ -106,16 +110,12 @@ function CommandBox({ command }: { command: string }) {
   }
 
   return (
-    <div className="flex items-start gap-2 rounded-lg bg-black/5 p-3 dark:bg-white/10">
-      <code className="min-w-0 flex-1 break-all font-mono text-xs leading-5">{command}</code>
-      <button
-        type="button"
-        onClick={copy}
-        className="shrink-0 rounded-md border border-black/10 px-2 py-1 text-xs transition-colors hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
-      >
+    <Stack direction="row" align="start" gap={2} className={styles.command}>
+      <code className={styles.commandText}>{command}</code>
+      <Button variant="outline" color="neutral" size="sm" onClick={copy}>
         {copied ? '복사됨' : '복사'}
-      </button>
-    </div>
+      </Button>
+    </Stack>
   );
 }
 
@@ -125,22 +125,22 @@ function UploadStatus({ state }: { state: UploadState }) {
       return null;
     case 'reading':
       return (
-        <p role="status" className="text-sm text-zinc-600 dark:text-zinc-400">
+        <Typography variant="body-sm" color="muted" role="status">
           파일을 읽는 중이에요…
-        </p>
+        </Typography>
       );
     case 'error':
       return (
-        <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+        <Alert color="danger" role="alert">
           {state.message}
-        </p>
+        </Alert>
       );
     case 'parsed':
       return (
-        <p role="status" className="text-sm text-zinc-600 dark:text-zinc-400">
+        <Typography variant="body-sm" color="muted" role="status">
           {state.fileName}에서 커밋 {state.commits.length.toLocaleString('ko-KR')}개를 읽었어요.
           {state.skipped > 0 && ` 형식이 맞지 않는 ${state.skipped.toLocaleString('ko-KR')}개는 건너뛰었어요.`}
-        </p>
+        </Typography>
       );
   }
 }
@@ -161,44 +161,47 @@ function ParsedResult({
   );
   const summary = useMemo(() => summarizeContribution(myCommits), [myCommits]);
 
-  function toggle(email: string) {
+  function toggle(email: string, checked: boolean) {
     const next = new Set(selectedEmails);
-    if (next.has(email)) {
-      next.delete(email);
-    } else {
+    if (checked) {
       next.add(email);
+    } else {
+      next.delete(email);
     }
     onSelectedEmailsChange(next);
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <fieldset className="flex flex-col gap-3">
-        <legend className="mb-3 font-semibold">내 이메일을 골라 주세요</legend>
-        <p className="-mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          회사 메일과 개인 메일처럼 여러 개를 썼다면 모두 골라 주세요. 고른 이메일로 작성한 커밋만 분석해요.
-        </p>
-        <ul className="divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/15 dark:border-white/15">
-          {authors.map(author => (
-            <li key={author.email}>
-              <label className="flex cursor-pointer items-center gap-3 px-5 py-3">
-                <input
-                  type="checkbox"
+    <Stack gap={8}>
+      <fieldset className={styles.fieldset}>
+        <Stack gap={3}>
+          <Typography as="legend" variant="h4" className={styles.legend}>
+            내 이메일을 골라 주세요
+          </Typography>
+          <Typography variant="body-sm" color="muted">
+            회사 메일과 개인 메일처럼 여러 개를 썼다면 모두 골라 주세요. 고른 이메일로 작성한 커밋만 분석해요.
+          </Typography>
+          <DividedList>
+            {authors.map(author => (
+              <DividedListItem key={author.email}>
+                <Checkbox
                   checked={selectedEmails.has(author.email)}
-                  onChange={() => toggle(author.email)}
-                  className="size-4 accent-foreground"
+                  onCheckedChange={checked => toggle(author.email, checked)}
+                  label={
+                    <Stack as="span" gap={0}>
+                      <Typography as="span" variant="body-sm" weight="medium">
+                        {author.names.join(', ')} · 커밋 {author.commitCount.toLocaleString('ko-KR')}개
+                      </Typography>
+                      <Typography as="span" variant="caption" color="muted">
+                        {author.email}
+                      </Typography>
+                    </Stack>
+                  }
                 />
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-sm font-medium">{author.names.join(', ')}</span>
-                  <span className="truncate text-xs text-zinc-500">{author.email}</span>
-                </span>
-                <span className="shrink-0 text-xs text-zinc-500">
-                  커밋 {author.commitCount.toLocaleString('ko-KR')}개
-                </span>
-              </label>
-            </li>
-          ))}
-        </ul>
+              </DividedListItem>
+            ))}
+          </DividedList>
+        </Stack>
       </fieldset>
 
       {selectedEmails.size > 0 ? (
@@ -209,10 +212,8 @@ function ParsedResult({
           emptyHint="고른 이메일로 작성한 커밋이 없어요."
         />
       ) : (
-        <p className="rounded-xl border border-dashed border-black/15 px-6 py-10 text-sm text-zinc-600 dark:border-white/20 dark:text-zinc-400">
-          이메일을 고르면 기여 분석 결과가 여기에 나와요.
-        </p>
+        <EmptyState title="이메일을 고르면 기여 분석 결과가 여기에 나와요." />
       )}
-    </div>
+    </Stack>
   );
 }

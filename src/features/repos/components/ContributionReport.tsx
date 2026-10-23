@@ -1,5 +1,9 @@
+import { Alert, Card, Grid, Link, Skeleton, Stack, Typography } from '@bestow-ui/react';
 import type { ReactNode } from 'react';
+import { DividedList, DividedListItem } from '@/components/ui/DividedList';
+import { EmptyState } from '@/components/ui/Page';
 import type { ContributionCommit, ContributionSummary, LineStats } from '../lib/contribution';
+import styles from './ContributionReport.module.css';
 
 /** 처음에 펼쳐 보여 줄 커밋 수. 나머지는 접어 둔다. */
 const VISIBLE_COMMITS = 30;
@@ -29,10 +33,11 @@ export function ContributionReport({
 }: Props) {
   if (summary.commitCount === 0) {
     return (
-      <div className="flex flex-col gap-2 rounded-xl border border-dashed border-black/15 px-6 py-10 dark:border-white/20">
-        <p className="font-medium">내가 작성한 커밋을 찾지 못했어요.</p>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">{emptyHint}</p>
-      </div>
+      <EmptyState title="내가 작성한 커밋을 찾지 못했어요.">
+        <Typography variant="body-sm" color="muted">
+          {emptyHint}
+        </Typography>
+      </EmptyState>
     );
   }
 
@@ -41,109 +46,123 @@ export function ContributionReport({
   const hidden = newestFirst.slice(VISIBLE_COMMITS);
 
   return (
-    <div className="flex flex-col gap-6">
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <Stack gap={6}>
+      <Grid as="dl" columns={{ base: 2, md: 4 }} gap={3} className={styles.stats}>
         <Stat label="내 커밋">{numberFormatter.format(summary.commitCount)}개</Stat>
         <Stat label="활동 기간">
           {summary.firstAt && summary.lastAt && (
-            <span className="text-base">
+            <Typography as="span" variant="body" weight="semibold">
               {dateFormatter.format(new Date(summary.firstAt))}
               <br />~ {dateFormatter.format(new Date(summary.lastAt))}
-            </span>
+            </Typography>
           )}
         </Stat>
         <Stat label="활동한 달">{numberFormatter.format(summary.monthly.length)}개월</Stat>
         <Stat label="변경한 줄 (lockfile 제외)">
           {summary.lineTotals ? (
-            <span className="text-base">
+            <Typography as="span" variant="body" weight="semibold">
               <LineDelta stats={summary.lineTotals} />
-            </span>
+            </Typography>
           ) : (
-            <span role="status" className="flex flex-col gap-1">
-              <span className="block h-6 w-28 animate-pulse rounded bg-black/10 dark:bg-white/10" />
-              <span className="text-xs font-normal text-zinc-500">커밋마다 세는 중이에요…</span>
-            </span>
+            <Stack as="span" gap={1} role="status">
+              <Skeleton variant="rect" width={112} height={24} />
+              <Typography as="span" variant="caption" color="muted">
+                커밋마다 세는 중이에요…
+              </Typography>
+            </Stack>
           )}
         </Stat>
         {share && share.total > 0 && (
           <Stat label="전체 커밋 중 비중">
             {percentFormatter.format(share.mine / share.total)}
-            <span className="block text-xs font-normal text-zinc-500">
+            <Typography as="span" variant="caption" color="muted" weight="regular" className={styles.block}>
               {numberFormatter.format(share.mine)} / {numberFormatter.format(share.total)}
-            </span>
+            </Typography>
           </Stat>
         )}
-      </dl>
+      </Grid>
 
-      {truncatedNote && (
-        <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-          {truncatedNote}
-        </p>
-      )}
+      {truncatedNote && <Alert color="warning">{truncatedNote}</Alert>}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="font-semibold">내 커밋</h2>
+      <Stack as="section" gap={3}>
+        <Typography variant="h4" as="h2">
+          내 커밋
+        </Typography>
         <CommitList commits={visible} />
         {hidden.length > 0 && (
-          <details className="group flex flex-col gap-3">
-            <summary className="cursor-pointer text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              이전 커밋 {numberFormatter.format(hidden.length)}개 더 보기
+          <details className={styles.more}>
+            <summary>
+              <Typography as="span" variant="body-sm" weight="medium" color="muted">
+                이전 커밋 {numberFormatter.format(hidden.length)}개 더 보기
+              </Typography>
             </summary>
-            <div className="mt-3">
-              <CommitList commits={hidden} />
-            </div>
+            <CommitList commits={hidden} />
           </details>
         )}
-      </section>
-    </div>
+      </Stack>
+    </Stack>
   );
 }
 
 function Stat({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-black/10 px-4 py-3 dark:border-white/15">
-      <dt className="text-xs text-zinc-500">{label}</dt>
-      <dd className="text-xl font-semibold">{children}</dd>
-    </div>
+    <Card variant="outline" padding="sm" className={styles.stat}>
+      <Typography as="dt" variant="caption" color="muted">
+        {label}
+      </Typography>
+      <Typography as="dd" variant="h3" weight="semibold" className={styles.statValue}>
+        {children}
+      </Typography>
+    </Card>
   );
 }
 
 function LineDelta({ stats }: { stats: Pick<LineStats, 'additions' | 'deletions'> }) {
   return (
     <>
-      <span className="text-green-700 dark:text-green-400">+{numberFormatter.format(stats.additions)}</span>{' '}
-      <span className="text-red-700 dark:text-red-400">−{numberFormatter.format(stats.deletions)}</span>
+      <Typography as="span" color="success">
+        +{numberFormatter.format(stats.additions)}
+      </Typography>{' '}
+      <Typography as="span" color="danger">
+        −{numberFormatter.format(stats.deletions)}
+      </Typography>
     </>
   );
 }
 
 function CommitList({ commits }: { commits: readonly ContributionCommit[] }) {
   return (
-    <ul className="divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/15 dark:border-white/15">
+    <DividedList>
       {commits.map(commit => (
-        <li key={commit.sha} className="flex flex-col gap-1 px-5 py-3 sm:flex-row sm:items-baseline sm:gap-4">
-          <span className="min-w-0 flex-1 truncate text-sm" title={commit.headline}>
-            {commit.headline}
-          </span>
-          <span className="flex shrink-0 items-baseline gap-3 text-xs text-zinc-500">
-            {commit.lineStats ? (
-              <span>
-                <LineDelta stats={commit.lineStats} />
-              </span>
-            ) : (
-              <span aria-hidden className="inline-block h-3 w-14 animate-pulse rounded bg-black/10 dark:bg-white/10" />
-            )}
-            <time dateTime={commit.authoredAt}>{dateFormatter.format(new Date(commit.authoredAt))}</time>
-            {commit.url ? (
-              <a href={commit.url} target="_blank" rel="noopener noreferrer" className="font-mono hover:underline">
-                {commit.sha.slice(0, 7)}
-              </a>
-            ) : (
-              <span className="font-mono">{commit.sha.slice(0, 7)}</span>
-            )}
-          </span>
-        </li>
+        <DividedListItem key={commit.sha}>
+          <Stack direction={{ base: 'column', md: 'row' }} align={{ base: 'stretch', md: 'baseline' }} gap={{ base: 1, md: 4 }}>
+            <Typography variant="body-sm" truncate title={commit.headline} className={styles.headline}>
+              {commit.headline}
+            </Typography>
+            <Stack as="span" direction="row" align="baseline" gap={3}>
+              <Typography as="span" variant="caption" color="muted">
+                {commit.lineStats ? (
+                  <LineDelta stats={commit.lineStats} />
+                ) : (
+                  <Skeleton variant="text" width={56} />
+                )}
+              </Typography>
+              <Typography as="span" variant="caption" color="muted">
+                <time dateTime={commit.authoredAt}>{dateFormatter.format(new Date(commit.authoredAt))}</time>
+              </Typography>
+              <Typography as="span" variant="caption" color="muted" className={styles.sha}>
+                {commit.url ? (
+                  <Link href={commit.url} target="_blank" rel="noopener noreferrer" color="inherit" underline="hover">
+                    {commit.sha.slice(0, 7)}
+                  </Link>
+                ) : (
+                  commit.sha.slice(0, 7)
+                )}
+              </Typography>
+            </Stack>
+          </Stack>
+        </DividedListItem>
       ))}
-    </ul>
+    </DividedList>
   );
 }

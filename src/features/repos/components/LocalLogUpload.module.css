@@ -1,0 +1,58 @@
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bestow-space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  gap: var(--bestow-space-4);
+}
+
+.stepNumber {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--bestow-radius-full);
+  background-color: var(--bestow-color-neutral-solid);
+  color: var(--bestow-color-neutral-contrast);
+  font-size: var(--bestow-font-size-sm);
+  font-weight: var(--bestow-font-weight-semibold);
+}
+
+.stepBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.command {
+  padding: var(--bestow-space-3);
+  border-radius: var(--bestow-radius-md);
+  background-color: var(--bestow-color-bg-muted);
+}
+
+.commandText {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--bestow-font-family-mono);
+  font-size: var(--bestow-font-size-xs);
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  padding: 0;
+}

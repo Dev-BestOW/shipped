@@ -12,7 +12,8 @@ GitHub 커밋 이력을 분석해 "문제 → 해결 → 결과" 형식의 경�
 ## 기술 스택
 
 - Next.js 16 (App Router, `src/`), React 19, TypeScript (strict)
-- Tailwind CSS 4, ESLint
+- [@bestow-ui/react](https://github.com/Dev-BestOW/BestOW-UI) 디자인 시스템 + CSS Modules, 글꼴 Pretendard
+- ESLint
 - Vercel AI SDK + Claude (5단계에서 도입)
 - npm (`package-lock.json` 기준)
 
@@ -51,6 +52,15 @@ src/
 - `any`를 쓰지 않는다. 외부 데이터(GitHub API, LLM 응답)는 Zod 스키마로 검증한 뒤 사용한다.
 - 컴포넌트는 기본이 Server Component다. 상태나 브라우저 API가 필요할 때만 `'use client'`를 붙인다.
 - UI 문구는 한국어로 쓴다.
+
+## UI 규칙
+
+- 화면은 `@bestow-ui/react` 컴포넌트로 만든다. 배치는 `Stack`·`Grid`·`Container`, 글자는 `Typography`를 쓴다.
+  props는 `node_modules/@bestow-ui/react/dist/index.d.ts`나 [llms-full.txt](https://dev-bestow.github.io/BestOW-UI/llms-full.txt)에서 확인한다.
+- 컴포넌트로 안 되는 부분만 같은 폴더의 `*.module.css`에 쓴다. 색·간격·글자 크기는 `var(--bestow-*)` 토큰만 쓰고 값을 직접 적지 않는다(다크 모드·브랜드 테마를 따라가도록).
+- 서버 컴포넌트에서 Next 링크를 붙일 때는 `<Link asChild><NextLink …/></Link>`를 쓴다(`as={NextLink}`는 클라이언트 컴포넌트에서만).
+- `Button`은 `asChild`를 받지 않는다. 버튼 모양 링크는 `components/ui/ButtonLink`를 쓴다.
+- 페이지 틀은 `components/ui/Page`(`Page`·`PageHeader`·`EmptyState`), 구분선 목록은 `DividedList`를 쓴다.
 - 비동기 작업은 로딩·실패·빈 상태를 모두 화면에 표시한다.
 
 ## 보안과 개인정보

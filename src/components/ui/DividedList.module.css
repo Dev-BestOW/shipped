@@ -1,0 +1,15 @@
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--bestow-color-border-default);
+  border-radius: var(--bestow-radius-lg);
+}
+
+.item {
+  padding: var(--bestow-space-3) var(--bestow-space-5);
+}
+
+.item + .item {
+  border-top: 1px solid var(--bestow-color-border-default);
+}

@@ -1,0 +1,12 @@
+.page {
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+  padding-block: var(--bestow-space-12);
+}
+
+.empty {
+  padding: var(--bestow-space-10) var(--bestow-space-6);
+  border: 1px dashed var(--bestow-color-border-strong);
+  border-radius: var(--bestow-radius-lg);
+}
