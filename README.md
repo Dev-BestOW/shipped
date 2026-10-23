@@ -41,8 +41,23 @@ Node.js 22 이상이 필요합니다.
 
 ```bash
 npm install
+cp .env.example .env.local   # 값을 채운다 (아래 GitHub App 설정 참고)
 npm run dev
 ```
+
+### GitHub App 설정
+
+[GitHub App 만들기](https://github.com/settings/apps/new)에서 아래처럼 설정합니다.
+
+| 항목 | 값 |
+| --- | --- |
+| Callback URL | `http://localhost:3000/api/auth/callback` |
+| Expire user authorization tokens | 체크 (refresh token 사용) |
+| Webhook | Active 체크 해제 |
+| Repository permissions | Contents: Read-only, Metadata: Read-only |
+| Where can this GitHub App be installed? | Any account |
+
+만든 뒤 Client ID, Client secret(새로 생성), 앱 주소의 slug를 `.env.local`에 넣습니다.
 
 http://localhost:3000 에서 확인할 수 있습니다.
 
@@ -52,7 +67,7 @@ http://localhost:3000 에서 확인할 수 있습니다.
 | --- | --- | --- |
 | 1 | 프로젝트 기본 세팅 | 완료 |
 | 2 | 프로젝트 규칙 정리 (`CLAUDE.md`, README) | 완료 |
-| 3 | GitHub 로그인과 레포 목록 | 예정 |
+| 3 | GitHub 로그인과 레포 목록 | 진행 중 |
 | 4 | 커밋 수집, 본인 기여 분석 | 예정 |
 | 5 | 경력기술서 스트리밍 생성 | 예정 |
 | 6 | 분석 단계 표시 (tool calling) | 예정 |
