@@ -26,6 +26,44 @@ async function githubGet<T>(token: string, path: string, schema: z.ZodType<T>): 
   return schema.parse(await response.json());
 }
 
+const graphqlErrorsSchema = z.object({
+  errors: z.array(z.object({ type: z.string().optional(), message: z.string() })).optional(),
+});
+
+/**
+ * GitHub GraphQL 요청. GraphQL은 일부가 실패해도 200으로 응답하고 본문에 errors를 담는다.
+ * `allowNotFound`면 NOT_FOUND 오류는 무시하고 data(해당 필드는 null)를 그대로 돌려준다.
+ */
+export async function githubGraphql<T>(
+  token: string,
+  query: string,
+  variables: Record<string, unknown>,
+  dataSchema: z.ZodType<T>,
+  { allowNotFound = false }: { allowNotFound?: boolean } = {},
+): Promise<T> {
+  const response = await fetch(`${API_URL}/graphql`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query, variables }),
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new GitHubApiError(response.status, `GitHub GraphQL 요청 실패 (HTTP ${response.status})`);
+  }
+
+  const body: unknown = await response.json();
+  const errors = (graphqlErrorsSchema.parse(body).errors ?? []).filter(
+    error => !(allowNotFound && error.type === 'NOT_FOUND'),
+  );
+  if (errors.length > 0) {
+    throw new GitHubApiError(200, `GitHub GraphQL 오류: ${errors.map(error => error.message).join(', ')}`);
+  }
+  return z.object({ data: dataSchema }).parse(body).data;
+}
+
 const userSchema = z.object({
   id: z.number(),
   login: z.string(),

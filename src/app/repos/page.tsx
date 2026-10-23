@@ -1,26 +1,14 @@
+import Link from 'next/link';
 import { RepoList } from '@/features/repos/components/RepoList';
-import { GitHubApiError, listAccessibleRepos } from '@/server/github/api';
+import { listAccessibleRepos } from '@/server/github/api';
 import { getInstallUrl } from '@/server/github/oauth';
-import { requireSession } from '@/server/session';
-import { redirect } from 'next/navigation';
+import { requireSession, withTokenRefresh } from '@/server/session';
 
 export const metadata = { title: '내 레포 · shipped' };
 
-async function loadRepos(accessToken: string) {
-  try {
-    return await listAccessibleRepos(accessToken);
-  } catch (error) {
-    // 토큰이 만료 시각 전에 무효화된 경우(앱 권한 회수 등)에는 갱신을 시도한다.
-    if (error instanceof GitHubApiError && error.status === 401) {
-      redirect('/api/auth/refresh?returnTo=/repos');
-    }
-    throw error;
-  }
-}
-
 export default async function ReposPage() {
   const session = await requireSession('/repos');
-  const repos = await loadRepos(session.accessToken);
+  const repos = await withTokenRefresh('/repos', () => listAccessibleRepos(session.accessToken));
   const installUrl = getInstallUrl();
 
   return (
@@ -56,6 +44,14 @@ export default async function ReposPage() {
           </a>
         </div>
       )}
+
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        회사 GitLab처럼 GitHub에 없는 레포는{' '}
+        <Link href="/local" className="font-medium text-foreground underline underline-offset-4">
+          git log 파일로 분석
+        </Link>
+        할 수 있어요.
+      </p>
     </main>
   );
 }

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { getEnv } from './env';
+import { GitHubApiError } from './github/api';
 
 const SESSION_COOKIE = 'shipped_session';
 /** 세션 쿠키 수명. GitHub refresh token 수명(약 6개월)보다 짧게 둔다. */
@@ -95,4 +96,18 @@ export async function requireSession(returnTo: string): Promise<Session> {
     redirect(`/api/auth/refresh?returnTo=${encodeURIComponent(returnTo)}`);
   }
   return session;
+}
+
+/**
+ * GitHub 요청을 실행하고, 토큰이 만료 시각 전에 무효화됐으면(앱 권한 회수 등) 갱신한 뒤 돌아온다.
+ */
+export async function withTokenRefresh<T>(returnTo: string, request: () => Promise<T>): Promise<T> {
+  try {
+    return await request();
+  } catch (error) {
+    if (error instanceof GitHubApiError && error.status === 401) {
+      redirect(`/api/auth/refresh?returnTo=${encodeURIComponent(returnTo)}`);
+    }
+    throw error;
+  }
 }
