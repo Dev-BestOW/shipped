@@ -1,10 +1,11 @@
-import { Link } from '@bestow-ui/react';
+import { Link, Stack } from '@bestow-ui/react';
 import NextLink from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense, type ComponentProps } from 'react';
 import { EmptyState, Page, PageHeader } from '@/components/ui/Page';
 import { ContributionReport } from '@/features/repos/components/ContributionReport';
 import { summarizeContribution, type ContributionCommit } from '@/features/repos/lib/contribution';
+import { ResumeGenerator } from '@/features/resume/components/ResumeGenerator';
 import { addLineStats, getMyRepoContribution } from '@/server/github/commits';
 import { requireSession, withTokenRefresh } from '@/server/session';
 
@@ -97,5 +98,11 @@ async function ReportWithLineStats({
   reportProps: Pick<ComponentProps<typeof ContributionReport>, 'share' | 'truncatedNote'>;
 }) {
   const withStats = await withTokenRefresh(returnTo, () => addLineStats(token, repo, commits));
-  return <ContributionReport summary={summarizeContribution(withStats)} commits={withStats} {...reportProps} />;
+  const summary = summarizeContribution(withStats);
+  return (
+    <Stack gap={8}>
+      <ContributionReport summary={summary} commits={withStats} {...reportProps} />
+      {summary.commitCount > 0 && <ResumeGenerator projectName={repo} commits={withStats} share={reportProps.share} />}
+    </Stack>
+  );
 }

@@ -32,7 +32,7 @@ shipped는 레포에서 **본인 커밋만** 추려 내고, 그 근거로 경력
 | --- | --- |
 | 프레임워크 | Next.js 16 (App Router), React 19, TypeScript |
 | UI | [@bestow-ui/react](https://github.com/Dev-BestOW/BestOW-UI) (직접 만든 디자인 시스템), CSS Modules, Pretendard |
-| LLM | Vercel AI SDK, Claude |
+| LLM | Claude Opus 5.5 (Anthropic SDK) |
 | 인증·데이터 | GitHub OAuth, GitHub REST API |
 | 테스트 | Vitest, Playwright |
 
@@ -73,7 +73,7 @@ http://localhost:3000 에서 확인할 수 있습니다.
 | 2 | 프로젝트 규칙 정리 (`CLAUDE.md`, README) | 완료 |
 | 3 | GitHub 로그인과 레포 목록 | 완료 |
 | 4 | 커밋 수집, 본인 기여 분석 | 완료 |
-| 5 | 경력기술서 스트리밍 생성 | 예정 |
+| 5 | 경력기술서 스트리밍 생성 | 진행 중 |
 | 6 | 분석 단계 표시 (tool calling) | 예정 |
 | 7 | 구조화 출력, 문장별 수락·거절 | 예정 |
 | 8 | 테스트, PDF 내보내기, 배포 | 예정 |

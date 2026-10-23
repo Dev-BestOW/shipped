@@ -14,7 +14,7 @@ GitHub 커밋 이력을 분석해 "문제 → 해결 → 결과" 형식의 경�
 - Next.js 16 (App Router, `src/`), React 19, TypeScript (strict)
 - [@bestow-ui/react](https://github.com/Dev-BestOW/BestOW-UI) 디자인 시스템 + CSS Modules, 글꼴 Pretendard
 - ESLint
-- Vercel AI SDK + Claude (5단계에서 도입)
+- Anthropic 공식 SDK(`@anthropic-ai/sdk`) + Claude Opus 5.5 — 호출 코드는 `src/server/resume/`
 - npm (`package-lock.json` 기준)
 
 ## 명령어

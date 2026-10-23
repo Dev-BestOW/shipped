@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, Button, Checkbox, FileUpload, Stack, Typography } from '@bestow-ui/react';
+import { Alert, Button, Checkbox, FileUpload, Stack, TextField, Typography } from '@bestow-ui/react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { DividedList, DividedListItem } from '@/components/ui/DividedList';
 import { EmptyState } from '@/components/ui/Page';
@@ -13,6 +13,7 @@ import {
   parseGitLog,
   type LocalCommit,
 } from '../lib/git-log';
+import { ResumeGenerator } from '@/features/resume/components/ResumeGenerator';
 import { ContributionReport } from './ContributionReport';
 import styles from './LocalLogUpload.module.css';
 
@@ -160,6 +161,7 @@ function ParsedResult({
     [commits, selectedEmails],
   );
   const summary = useMemo(() => summarizeContribution(myCommits), [myCommits]);
+  const [projectName, setProjectName] = useState('');
 
   function toggle(email: string, checked: boolean) {
     const next = new Set(selectedEmails);
@@ -205,12 +207,30 @@ function ParsedResult({
       </fieldset>
 
       {selectedEmails.size > 0 ? (
-        <ContributionReport
-          summary={summary}
-          commits={myCommits}
-          share={{ mine: myCommits.length, total: commits.length }}
-          emptyHint="고른 이메일로 작성한 커밋이 없어요."
-        />
+        <>
+          <ContributionReport
+            summary={summary}
+            commits={myCommits}
+            share={{ mine: myCommits.length, total: commits.length }}
+            emptyHint="고른 이메일로 작성한 커밋이 없어요."
+          />
+          {myCommits.length > 0 && (
+            <Stack gap={4}>
+              <TextField
+                label="프로젝트 이름"
+                helperText="경력기술서에 쓸 이름이에요. 비워 두면 '이름 없는 프로젝트'로 보내요."
+                value={projectName}
+                onChange={event => setProjectName(event.target.value)}
+                maxLength={200}
+              />
+              <ResumeGenerator
+                projectName={projectName.trim() || '이름 없는 프로젝트'}
+              commits={myCommits}
+                share={{ mine: myCommits.length, total: commits.length }}
+              />
+            </Stack>
+          )}
+        </>
       ) : (
         <EmptyState title="이메일을 고르면 기여 분석 결과가 여기에 나와요." />
       )}
