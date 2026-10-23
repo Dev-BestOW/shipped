@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MAX_FILES_PER_COMMIT } from '@/features/repos/lib/contribution';
+import { resumeDraftSchema } from './draft';
 
 /** 한 번에 보낼 수 있는 최대 커밋 수. GitHub 수집 상한(500개)과 맞춘다. */
 export const MAX_RESUME_COMMITS = 500;
@@ -58,9 +59,12 @@ export const resumeEventSchema = z.discriminatedUnion('type', [
     status: z.enum(['running', 'done']),
     detail: z.string().optional(),
   }),
+  /** 초안 JSON 조각. 브라우저가 이어 붙여 덜 완성된 JSON으로 읽는다. */
   z.object({ type: z.literal('text'), text: z.string() }),
   z.object({
     type: z.literal('done'),
+    /** 스키마 검증과 근거 커밋 확인을 마친 최종 초안 */
+    draft: resumeDraftSchema,
     /** max_tokens면 글이 중간에 끊겼다는 뜻 */
     stopReason: z.enum(['end_turn', 'max_tokens', 'other']),
     usage: z.object({ inputTokens: z.number(), outputTokens: z.number(), cacheReadTokens: z.number() }),

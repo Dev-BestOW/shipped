@@ -1,5 +1,7 @@
 import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
+import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
+import { resumeDraftSchema, verifyDraftEvidence, type ResumeDraft } from '@/features/resume/lib/draft';
 import type { ResumeEvent, ResumeRequest } from '@/features/resume/lib/schema';
 import { buildResumeUserContent, RESUME_SYSTEM_PROMPT } from './prompt';
 import { createResumeTools, runningLabelForTool } from './tools';
@@ -40,7 +42,8 @@ export async function* streamResumeDraft(input: ResumeRequest, signal: AbortSign
       model: MODEL,
       max_tokens: 64000,
       // 문장 품질이 중요한 작업이라 기본값(medium)보다 한 단계 높인다.
-      output_config: { effort: 'high' },
+      // 마지막 답은 문장마다 근거 커밋이 붙은 JSON으로 받는다.
+      output_config: { effort: 'high', format: betaZodOutputFormat(resumeDraftSchema) },
       // 안전 분류기가 거절하면 Anthropic이 권장하는 모델로 서버에서 다시 시도한다.
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
@@ -57,6 +60,8 @@ export async function* streamResumeDraft(input: ResumeRequest, signal: AbortSign
 
   const usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 };
   let stopReason: Extract<ResumeEvent, { type: 'done' }>['stopReason'] = 'other';
+  /** 마지막 응답의 텍스트(초안 JSON) */
+  let finalText = '';
   let writing = false;
   let iteration = 0;
 
@@ -106,6 +111,7 @@ export async function* streamResumeDraft(input: ResumeRequest, signal: AbortSign
       return;
     }
     stopReason = message.stop_reason === 'end_turn' || message.stop_reason === 'max_tokens' ? message.stop_reason : 'other';
+    finalText = message.content.flatMap(block => (block.type === 'text' ? [block.text] : [])).join('');
     iteration++;
   }
 
@@ -115,8 +121,34 @@ export async function* streamResumeDraft(input: ResumeRequest, signal: AbortSign
     yield { type: 'error', message: '분석이 길어져 초안을 쓰지 못했어요. 다시 시도해 주세요.' };
     return;
   }
+  const draft = parseDraft(finalText);
+  if (!draft) {
+    yield {
+      type: 'error',
+      message:
+        stopReason === 'max_tokens'
+          ? '초안이 너무 길어 중간에 끊겼어요. 다시 만들어 주세요.'
+          : '초안 형식이 올바르지 않아요. 다시 만들어 주세요.',
+    };
+    return;
+  }
   yield { type: 'step', id: 'write', label: '초안 쓰기', status: 'done' };
-  yield { type: 'done', stopReason, usage };
+  yield {
+    type: 'done',
+    draft: verifyDraftEvidence(draft, input.commits.map(commit => commit.sha)),
+    stopReason,
+    usage,
+  };
+}
+
+/** 초안 JSON을 스키마로 검증한다. 형식이 맞지 않으면 null. */
+export function parseDraft(text: string): ResumeDraft | null {
+  try {
+    const result = resumeDraftSchema.safeParse(JSON.parse(text));
+    return result.success ? result.data : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Claude 오류를 사용자에게 보여 줄 문구로 바꾼다. */

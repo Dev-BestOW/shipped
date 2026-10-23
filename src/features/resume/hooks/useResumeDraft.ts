@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
+import type { ResumeDraft } from '../lib/draft';
 import { resumeEventSchema, type ResumeEvent, type ResumeRequest } from '../lib/schema';
 
 type Usage = Extract<ResumeEvent, { type: 'done' }>['usage'];
@@ -18,7 +19,7 @@ type Progress = { text: string; steps: AnalysisStep[]; mock: boolean };
 export type ResumeDraftState =
   | { status: 'idle' }
   | ({ status: 'streaming' } & Progress)
-  | ({ status: 'done'; truncated: boolean; usage: Usage } & Progress)
+  | ({ status: 'done'; draft: ResumeDraft; usage: Usage } & Progress)
   | ({ status: 'stopped' } & Progress)
   /** loginRequired: 로그인하지 않아 서버가 거절했다 */
   | ({ status: 'error'; message: string; loginRequired: boolean } & Progress);
@@ -115,7 +116,7 @@ export function useResumeDraft() {
               setState({
                 status: 'done',
                 ...progress(),
-                truncated: event.data.stopReason === 'max_tokens',
+                draft: event.data.draft,
                 usage: event.data.usage,
               });
               return;

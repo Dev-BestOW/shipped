@@ -1,4 +1,5 @@
 import 'server-only';
+import { verifyDraftEvidence, type ResumeDraft } from '@/features/resume/lib/draft';
 import type { ResumeEvent, ResumeRequest } from '@/features/resume/lib/schema';
 import { findCommits, summarizeWorkAreas } from './analysis';
 
@@ -15,7 +16,7 @@ export function isResumeMockMode(): boolean {
 /** 단계 사이 대기 시간. 실제 Claude보다 훨씬 짧게 둔다. */
 const STEP_DELAY_MS = 700;
 const CHUNK_DELAY_MS = 25;
-const CHUNK_SIZE = 6;
+const CHUNK_SIZE = 12;
 
 const dateFormatter = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' });
 
@@ -34,8 +35,11 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-/** 실제로 보낸 커밋의 해시·통계로 초안 틀을 채운다. 문장은 고정 문구다. */
-function buildMockDraft({ projectName, commits }: ResumeRequest): string {
+/**
+ * 실제로 보낸 커밋의 해시·기간으로 초안 틀을 채운다. 문장은 고정 문구다.
+ * 근거 확인 화면을 시험할 수 있도록 마지막 문장에는 목록에 없는 해시를 하나 섞는다(검증 단계에서 빠진다).
+ */
+function buildMockDraft({ projectName, commits }: ResumeRequest): ResumeDraft {
   const sorted = [...commits].sort((a, b) => Date.parse(a.authoredAt) - Date.parse(b.authoredAt));
   const shas = sorted.map(commit => commit.sha.slice(0, 7));
   const first = dateFormatter.format(new Date(sorted[0].authoredAt));
@@ -45,25 +49,26 @@ function buildMockDraft({ projectName, commits }: ResumeRequest): string {
     .map(i => shas.filter((_, index) => index % 3 === i).slice(0, 3))
     .filter(group => group.length > 0);
 
-  const achievements = groups.map(
-    (group, index) => `### (가짜) 성과 ${index + 1}
-- 문제: [문제를 적어 주세요]
-- 해결: 커밋 ${group.length}개에 걸쳐 기능을 구현하고 정리
-- 결과: [N]% 개선
-- 근거: ${group.join(', ')}`,
-  );
-
-  return `> 개발용 가짜 응답이에요. Claude를 부르지 않았어요.
-
-## 프로젝트 요약
-- 프로젝트: ${projectName}
-- 기간: ${first} ~ ${last}
-- 커밋: ${sorted.length}개
-- 역할: [역할]
-
-## 주요 성과
-${achievements.join('\n\n')}
-`;
+  return {
+    summary: {
+      overview: `(가짜) ${projectName}에서 커밋 ${sorted.length}개로 기능을 만들고 다듬음`,
+      period: `${first} ~ ${last}`,
+      role: '[역할]',
+      techStack: ['[기술]'],
+    },
+    achievements: groups.map((group, index) => ({
+      title: `(가짜) 성과 ${index + 1}`,
+      sentences: [
+        { kind: 'problem', text: '[문제를 적어 주세요]', evidence: group.slice(0, 1) },
+        { kind: 'solution', text: `커밋 ${group.length}개에 걸쳐 기능을 구현하고 정리`, evidence: group },
+        {
+          kind: 'result',
+          text: '응답 시간 [N]% 개선',
+          evidence: index === groups.length - 1 ? ['0000000'] : group.slice(-1),
+        },
+      ],
+    })),
+  };
 }
 
 /**
@@ -72,6 +77,7 @@ ${achievements.join('\n\n')}
  */
 export async function* streamMockResumeDraft(input: ResumeRequest, signal: AbortSignal): AsyncGenerator<ResumeEvent> {
   const draft = buildMockDraft(input);
+  const json = JSON.stringify(draft);
   const areas = summarizeWorkAreas(input.commits, 2, 20);
   const shas = input.commits.slice(0, 5).map(commit => commit.sha.slice(0, 7));
   const { found } = findCommits(input.commits, shas);
@@ -101,10 +107,15 @@ export async function* streamMockResumeDraft(input: ResumeRequest, signal: Abort
   }
 
   yield { type: 'step', id: 'write', label: '초안 쓰기', status: 'running' };
-  for (let i = 0; i < draft.length; i += CHUNK_SIZE) {
-    yield { type: 'text', text: draft.slice(i, i + CHUNK_SIZE) };
+  for (let i = 0; i < json.length; i += CHUNK_SIZE) {
+    yield { type: 'text', text: json.slice(i, i + CHUNK_SIZE) };
     await sleep(CHUNK_DELAY_MS, signal);
   }
   yield { type: 'step', id: 'write', label: '초안 쓰기', status: 'done' };
-  yield { type: 'done', stopReason: 'end_turn', usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 } };
+  yield {
+    type: 'done',
+    draft: verifyDraftEvidence(draft, input.commits.map(commit => commit.sha)),
+    stopReason: 'end_turn',
+    usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
+  };
 }

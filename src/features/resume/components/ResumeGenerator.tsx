@@ -1,13 +1,21 @@
 'use client';
 
 import { Alert, Badge, Button, Card, Stack, Typography } from '@bestow-ui/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ButtonLink } from '@/components/ui/ButtonLink';
 import type { ContributionCommit } from '@/features/repos/lib/contribution';
 import { useResumeDraft } from '../hooks/useResumeDraft';
 import { AnalysisSteps } from './AnalysisSteps';
+import type { ResumeDraft } from '../lib/draft';
+import { parsePartialDraft } from '../lib/partialDraft';
+import {
+  acceptAllPending,
+  countReview,
+  draftToMarkdown,
+  type DraftReview as DraftReviewState,
+} from '../lib/review';
 import { MAX_RESUME_COMMITS, type ResumeRequest } from '../lib/schema';
-import styles from './ResumeGenerator.module.css';
+import { DraftPreview, DraftReview, type CommitLookup } from './DraftReview';
 
 const numberFormatter = new Intl.NumberFormat('ko-KR');
 
@@ -17,15 +25,23 @@ type Props = {
   share?: ResumeRequest['share'];
 };
 
-/** 본인 커밋으로 경력기술서 초안을 스트리밍 생성한다. */
+/** 본인 커밋으로 경력기술서 초안을 스트리밍 생성하고, 문장마다 수락·수정·거절한다. */
 export function ResumeGenerator({ projectName, commits, share }: Props) {
   const { state, generate, stop } = useResumeDraft();
+  const [review, setReview] = useState<DraftReviewState>({});
   // 최신 커밋부터 상한까지만 보낸다. GitHub 수집 상한과 같아서 보통은 전부 들어간다.
-  const sent = [...commits]
-    .sort((a, b) => Date.parse(b.authoredAt) - Date.parse(a.authoredAt))
-    .slice(0, MAX_RESUME_COMMITS);
+  const sent = useMemo(
+    () => [...commits].sort((a, b) => Date.parse(b.authoredAt) - Date.parse(a.authoredAt)).slice(0, MAX_RESUME_COMMITS),
+    [commits],
+  );
+  const lookup: CommitLookup = useMemo(
+    () =>
+      new Map(sent.map(commit => [commit.sha.slice(0, 7), { headline: commit.headline, url: commit.url }] as const)),
+    [sent],
+  );
 
   function start() {
+    setReview({});
     void generate({
       projectName,
       share,
@@ -35,10 +51,12 @@ export function ResumeGenerator({ projectName, commits, share }: Props) {
 
   const isStreaming = state.status === 'streaming';
   const text = state.status === 'idle' ? '' : state.text;
+  // 완성 전에는 덜 완성된 JSON을 읽어 다 쓴 문장부터 보여 준다.
+  const partial = useMemo(() => (state.status === 'done' ? null : parsePartialDraft(text)), [state.status, text]);
 
   return (
     <Card as="section" variant="outline" padding="md" aria-labelledby="resume-title">
-      <Stack gap={4}>
+      <Stack gap={5}>
         <Stack direction={{ base: 'column', md: 'row' }} justify="between" align={{ base: 'start', md: 'center' }} gap={3}>
           <Stack gap={1}>
             <Stack direction="row" align="center" gap={2}>
@@ -84,23 +102,38 @@ export function ResumeGenerator({ projectName, commits, share }: Props) {
           <AnalysisSteps steps={state.steps} active={isStreaming} />
         )}
 
-        {text && <DraftText text={text} streaming={isStreaming} />}
-
-        {state.status === 'done' && (
-          <Stack gap={2}>
-            {state.truncated && (
-              <Alert color="warning">글이 너무 길어 중간에 끊겼어요. 다시 만들어 주세요.</Alert>
-            )}
+        {state.status === 'done' ? (
+          <>
+            <ReviewToolbar
+              projectName={projectName}
+              draft={state.draft}
+              review={review}
+              onAcceptAll={() => setReview(prev => acceptAllPending(state.draft, prev))}
+            />
+            <DraftReview
+              draft={state.draft}
+              review={review}
+              onReviewChange={(key, next) => setReview(prev => ({ ...prev, [key]: next }))}
+              commits={lookup}
+            />
             <Typography variant="caption" color="subtle">
-              [N]과 [ ]로 남긴 칸은 커밋으로 확인할 수 없는 내용이에요. 직접 채워 주세요.
+              노란색으로 표시한 칸은 커밋으로 확인할 수 없는 내용이에요. 직접 채워 주세요.
               {!state.mock &&
                 ` · 입력 ${numberFormatter.format(state.usage.inputTokens + state.usage.cacheReadTokens)}토큰(캐시 ${numberFormatter.format(state.usage.cacheReadTokens)}) · 출력 ${numberFormatter.format(state.usage.outputTokens)}토큰`}
             </Typography>
-          </Stack>
+          </>
+        ) : (
+          // 스트리밍 중에는 스크린리더가 문장마다 읽지 않도록 다 쓴 뒤에만 알린다.
+          partial && (
+            <div aria-busy={isStreaming}>
+              <DraftPreview draft={partial} commits={lookup} />
+            </div>
+          )
         )}
+
         {state.status === 'stopped' && (
           <Typography variant="caption" color="muted" role="status">
-            생성을 멈췄어요.
+            생성을 멈췄어요. 다시 만들기를 누르면 처음부터 새로 써요.
           </Typography>
         )}
       </Stack>
@@ -108,32 +141,45 @@ export function ResumeGenerator({ projectName, commits, share }: Props) {
   );
 }
 
-function DraftText({ text, streaming }: { text: string; streaming: boolean }) {
+/** 검토 집계와 일괄 동작 */
+function ReviewToolbar({
+  projectName,
+  draft,
+  review,
+  onAcceptAll,
+}: {
+  projectName: string;
+  draft: ResumeDraft;
+  review: DraftReviewState;
+  onAcceptAll: () => void;
+}) {
   const [copied, setCopied] = useState(false);
+  const counts = countReview(draft, review);
+  const kept = counts.accepted + counts.edited;
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(draftToMarkdown(projectName, draft, review));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // 클립보드 권한이 없으면 사용자가 직접 선택해 복사할 수 있다.
+      // 클립보드 권한이 없으면 복사할 수 없다. 버튼 문구는 그대로 둔다.
     }
   }
 
   return (
-    <Stack gap={2}>
-      {/* 스트리밍 중에는 스크린리더가 글자마다 읽지 않도록 다 쓴 뒤에만 알린다. */}
-      <div className={styles.draft} aria-busy={streaming}>
-        {text}
-      </div>
-      {!streaming && (
-        <Stack direction="row" justify="end">
-          <Button variant="ghost" color="neutral" size="sm" onClick={copy}>
-            {copied ? '복사됨' : '마크다운 복사'}
-          </Button>
-        </Stack>
-      )}
+    <Stack direction={{ base: 'column', md: 'row' }} justify="between" align={{ base: 'start', md: 'center' }} gap={3}>
+      <Typography variant="body-sm" color="muted" role="status">
+        수락 {counts.accepted} · 수정 {counts.edited} · 거절 {counts.rejected} · 남음 {counts.pending}
+      </Typography>
+      <Stack direction="row" gap={2}>
+        <Button size="sm" variant="outline" color="neutral" onClick={onAcceptAll} disabled={counts.pending === 0}>
+          남은 문장 모두 수락
+        </Button>
+        <Button size="sm" onClick={copy} disabled={kept === 0}>
+          {copied ? '복사됨' : `수락한 문장 ${kept}개 복사`}
+        </Button>
+      </Stack>
     </Stack>
   );
 }
