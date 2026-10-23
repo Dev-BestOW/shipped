@@ -10,10 +10,10 @@ export type ContributionCommit = {
   message: string;
   /** 작성 시각. 작성자의 시간대 오프셋이 포함된 ISO 8601 문자열 */
   authoredAt: string;
+  /** 변경 줄 수와 파일 수. lockfile은 뺀다 (excluded-files.ts) */
   additions: number;
   deletions: number;
-  /** GitHub가 큰 커밋에서 파일 수를 계산하지 않으면 null */
-  changedFiles: number | null;
+  changedFiles: number;
   /** GitHub 커밋 페이지 주소. 로컬 업로드는 null */
   url: string | null;
 };

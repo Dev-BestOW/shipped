@@ -4,6 +4,7 @@ import { useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { summarizeContribution } from '../lib/contribution';
 import {
   GIT_LOG_COMMAND,
+  decodeGitLogFile,
   MAX_GIT_LOG_BYTES,
   listGitLogAuthors,
   parseGitLog,
@@ -33,7 +34,7 @@ export function LocalLogUpload() {
 
     setState({ status: 'reading' });
     try {
-      const { commits, skipped } = parseGitLog(await file.text());
+      const { commits, skipped } = parseGitLog(decodeGitLogFile(await file.arrayBuffer()));
       if (commits.length === 0) {
         setState({
           status: 'error',

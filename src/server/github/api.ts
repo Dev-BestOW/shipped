@@ -11,7 +11,7 @@ export class GitHubApiError extends Error {
   }
 }
 
-async function githubGet<T>(token: string, path: string, schema: z.ZodType<T>): Promise<T> {
+export async function githubGet<T>(token: string, path: string, schema: z.ZodType<T>): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     headers: {
       Accept: 'application/vnd.github+json',

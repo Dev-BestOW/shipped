@@ -53,7 +53,7 @@ export function ContributionReport({
           )}
         </Stat>
         <Stat label="활동한 달">{numberFormatter.format(summary.monthly.length)}개월</Stat>
-        <Stat label="변경한 줄">
+        <Stat label="변경한 줄 (lockfile 제외)">
           <span className="text-base">
             <span className="text-green-700 dark:text-green-400">+{numberFormatter.format(summary.additions)}</span>{' '}
             <span className="text-red-700 dark:text-red-400">−{numberFormatter.format(summary.deletions)}</span>
