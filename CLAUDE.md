@@ -61,6 +61,8 @@ src/
 - 서버 컴포넌트에서 Next 링크를 붙일 때는 `<Link asChild><NextLink …/></Link>`를 쓴다(`as={NextLink}`는 클라이언트 컴포넌트에서만).
 - `Button`은 `asChild`를 받지 않는다. 버튼 모양 링크는 `components/ui/ButtonLink`를 쓴다.
 - 페이지 틀은 `components/ui/Page`(`Page`·`PageHeader`·`EmptyState`), 구분선 목록은 `DividedList`를 쓴다.
+- BestOW-UI의 버그나 빈칸(직접 짜야 했던 것)을 찾으면 로컬 레포 `../BestOW-UI/docs/PILOT-FINDINGS.md`의
+  "파일럿 2 — shipped" 섹션에 같은 표 형식으로 적는다. 그 레포에서도 커밋은 하지 않는다.
 - 비동기 작업은 로딩·실패·빈 상태를 모두 화면에 표시한다.
 
 ## 보안과 개인정보
