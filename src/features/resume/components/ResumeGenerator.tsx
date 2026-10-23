@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, Button, Card, Spinner, Stack, Typography } from '@bestow-ui/react';
+import { Alert, Badge, Button, Card, Spinner, Stack, Typography } from '@bestow-ui/react';
 import { useState } from 'react';
 import { ButtonLink } from '@/components/ui/ButtonLink';
 import type { ContributionCommit } from '@/features/repos/lib/contribution';
@@ -40,9 +40,16 @@ export function ResumeGenerator({ projectName, commits, share }: Props) {
       <Stack gap={4}>
         <Stack direction={{ base: 'column', md: 'row' }} justify="between" align={{ base: 'start', md: 'center' }} gap={3}>
           <Stack gap={1}>
-            <Typography id="resume-title" variant="h4" as="h2">
-              경력기술서 초안
-            </Typography>
+            <Stack direction="row" align="center" gap={2}>
+              <Typography id="resume-title" variant="h4" as="h2">
+                경력기술서 초안
+              </Typography>
+              {state.status !== 'idle' && state.mock && (
+                <Badge variant="soft" color="warning" size="sm">
+                  개발용 가짜 응답
+                </Badge>
+              )}
+            </Stack>
             <Typography variant="body-sm" color="muted">
               커밋 메시지 {numberFormatter.format(sent.length)}개와 통계만 Claude에 보내요. 코드 내용은 보내지 않아요.
             </Typography>
@@ -89,9 +96,9 @@ export function ResumeGenerator({ projectName, commits, share }: Props) {
               <Alert color="warning">글이 너무 길어 중간에 끊겼어요. 다시 만들어 주세요.</Alert>
             )}
             <Typography variant="caption" color="subtle">
-              [N]과 [ ]로 남긴 칸은 커밋으로 확인할 수 없는 내용이에요. 직접 채워 주세요. · 입력{' '}
-              {numberFormatter.format(state.usage.inputTokens + state.usage.cacheReadTokens)}토큰(캐시{' '}
-              {numberFormatter.format(state.usage.cacheReadTokens)}) · 출력 {numberFormatter.format(state.usage.outputTokens)}토큰
+              [N]과 [ ]로 남긴 칸은 커밋으로 확인할 수 없는 내용이에요. 직접 채워 주세요.
+              {!state.mock &&
+                ` · 입력 ${numberFormatter.format(state.usage.inputTokens + state.usage.cacheReadTokens)}토큰(캐시 ${numberFormatter.format(state.usage.cacheReadTokens)}) · 출력 ${numberFormatter.format(state.usage.outputTokens)}토큰`}
             </Typography>
           </Stack>
         )}

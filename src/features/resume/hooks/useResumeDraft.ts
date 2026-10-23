@@ -6,13 +6,14 @@ import { resumeEventSchema, type ResumeEvent, type ResumeRequest } from '../lib/
 
 type Usage = Extract<ResumeEvent, { type: 'done' }>['usage'];
 
+/** mock: Claude 대신 개발용 가짜 응답을 받았다 */
 export type ResumeDraftState =
   | { status: 'idle' }
-  | { status: 'streaming'; text: string }
-  | { status: 'done'; text: string; truncated: boolean; usage: Usage }
-  | { status: 'stopped'; text: string }
+  | { status: 'streaming'; text: string; mock: boolean }
+  | { status: 'done'; text: string; mock: boolean; truncated: boolean; usage: Usage }
+  | { status: 'stopped'; text: string; mock: boolean }
   /** loginRequired: 로그인하지 않아 서버가 거절했다 */
-  | { status: 'error'; text: string; message: string; loginRequired: boolean };
+  | { status: 'error'; text: string; mock: boolean; message: string; loginRequired: boolean };
 
 const errorBodySchema = z.object({ message: z.string() });
 
@@ -39,10 +40,11 @@ export function useResumeDraft() {
     const controller = new AbortController();
     controllerRef.current = controller;
     let text = '';
-    setState({ status: 'streaming', text });
+    let mock = false;
+    setState({ status: 'streaming', text, mock });
 
     const fail = (message: string, loginRequired = false) =>
-      setState({ status: 'error', text, message, loginRequired });
+      setState({ status: 'error', text, mock, message, loginRequired });
 
     try {
       const response = await fetch('/api/resume', {
@@ -73,14 +75,19 @@ export function useResumeDraft() {
           if (!event.success) continue;
 
           switch (event.data.type) {
+            case 'start':
+              mock = event.data.mock;
+              setState({ status: 'streaming', text, mock });
+              break;
             case 'text':
               text += event.data.text;
-              setState({ status: 'streaming', text });
+              setState({ status: 'streaming', text, mock });
               break;
             case 'done':
               setState({
                 status: 'done',
                 text,
+                mock,
                 truncated: event.data.stopReason === 'max_tokens',
                 usage: event.data.usage,
               });
@@ -95,7 +102,7 @@ export function useResumeDraft() {
       fail('응답이 중간에 끊겼어요. 다시 시도해 주세요.');
     } catch (error) {
       if (controller.signal.aborted) {
-        setState({ status: 'stopped', text });
+        setState({ status: 'stopped', text, mock });
       } else {
         console.error('[useResumeDraft]', error);
         fail('서버에 연결하지 못했어요. 네트워크를 확인하고 다시 시도해 주세요.');

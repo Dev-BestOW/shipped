@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { resumeRequestSchema, type ResumeEvent } from '@/features/resume/lib/schema';
 import { describeResumeError, streamResumeDraft } from '@/server/resume/generate';
+import { isResumeMockMode, streamMockResumeDraft } from '@/server/resume/mock';
 import { getSession } from '@/server/session';
 
 function errorResponse(status: number, message: string) {
@@ -15,7 +16,8 @@ export async function POST(request: NextRequest) {
   if (!(await getSession())) {
     return errorResponse(401, '경력기술서 생성은 GitHub로 로그인한 뒤 쓸 수 있어요.');
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const mock = isResumeMockMode();
+  if (!mock && !process.env.ANTHROPIC_API_KEY) {
     return errorResponse(503, '서버에 Claude API 키가 설정되지 않았어요.');
   }
 
@@ -28,8 +30,10 @@ export async function POST(request: NextRequest) {
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (event: ResumeEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      const draft = mock ? streamMockResumeDraft : streamResumeDraft;
       try {
-        for await (const event of streamResumeDraft(parsed.data, request.signal)) {
+        send({ type: 'start', mock });
+        for await (const event of draft(parsed.data, request.signal)) {
           send(event);
         }
       } catch (error) {
@@ -39,7 +43,11 @@ export async function POST(request: NextRequest) {
           send({ type: 'error', message: describeResumeError(error) });
         }
       } finally {
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          // 사용자가 멈춰 스트림이 이미 취소됐다.
+        }
       }
     },
   });

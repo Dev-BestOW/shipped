@@ -34,6 +34,8 @@ export type ResumeRequest = z.infer<typeof resumeRequestSchema>;
 
 /** 응답은 한 줄에 이벤트 하나씩인 NDJSON 스트림이다. */
 export const resumeEventSchema = z.discriminatedUnion('type', [
+  /** 맨 처음 한 번. mock이면 Claude 대신 개발용 가짜 응답이다. */
+  z.object({ type: z.literal('start'), mock: z.boolean() }),
   z.object({ type: z.literal('text'), text: z.string() }),
   z.object({
     type: z.literal('done'),
