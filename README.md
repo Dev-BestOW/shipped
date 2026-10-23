@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# shipped
 
-## Getting Started
+> 내가 실제로 만든 것을, 근거와 함께.
 
-First, run the development server:
+GitHub 커밋 이력을 분석해 **"문제 → 해결 → 결과"** 형식의 경력기술서 초안을 만들어 주는 서비스입니다.
+
+## 왜 만들었나
+
+이직을 준비하며 경력기술서를 쓰다 보면, 몇 달 전 작업은 기억이 흐릿하고 성과는 형용사로만 남습니다.
+정작 내가 한 일의 근거는 커밋 이력에 다 남아 있는데도요.
+
+shipped는 레포에서 **본인 커밋만** 추려 내고, 그 근거로 경력기술서 문장을 씁니다.
+근거가 없는 수치는 지어내지 않고 빈칸으로 남겨, 사용자가 직접 채우게 합니다.
+
+## 주요 기능 (개발 예정)
+
+- **GitHub 연결**: OAuth로 로그인하고 분석할 레포를 고릅니다.
+- **기여 분석**: 레포별로 본인 커밋과 기간, 비중을 정리합니다.
+- **실시간 작성**: 분석 단계("커밋 수집 → 기여 분석 → 문장 작성")를 보여 주며 경력기술서를 스트리밍으로 작성합니다.
+- **문장별 검토**: 문장마다 근거 커밋을 확인하고 수락·수정·거절합니다.
+- **내보내기**: 완성한 경력기술서를 PDF로 저장합니다.
+
+## 개인정보 원칙
+
+- LLM에는 커밋 메시지와 통계 위주로 보내고, 코드 내용은 사용자가 고른 파일만 보냅니다.
+- 레포 데이터를 서버에 영구 저장하지 않습니다.
+
+## 기술 스택
+
+| 영역 | 사용 기술 |
+| --- | --- |
+| 프레임워크 | Next.js 16 (App Router), React 19, TypeScript |
+| 스타일 | Tailwind CSS 4 |
+| LLM | Vercel AI SDK, Claude |
+| 인증·데이터 | GitHub OAuth, GitHub REST API |
+| 테스트 | Vitest, Playwright |
+
+## 로컬 실행
+
+Node.js 22 이상이 필요합니다.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 에서 확인할 수 있습니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 진행 상황
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| 단계 | 내용 | 상태 |
+| --- | --- | --- |
+| 1 | 프로젝트 기본 세팅 | 완료 |
+| 2 | 프로젝트 규칙 정리 (`CLAUDE.md`, README) | 완료 |
+| 3 | GitHub 로그인과 레포 목록 | 예정 |
+| 4 | 커밋 수집, 본인 기여 분석 | 예정 |
+| 5 | 경력기술서 스트리밍 생성 | 예정 |
+| 6 | 분석 단계 표시 (tool calling) | 예정 |
+| 7 | 구조화 출력, 문장별 수락·거절 | 예정 |
+| 8 | 테스트, PDF 내보내기, 배포 | 예정 |
