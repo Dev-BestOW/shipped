@@ -12,7 +12,7 @@ GitHub 커밋 이력을 분석해 **"문제 → 해결 → 결과"** 형식의 �
 shipped는 레포에서 **본인 커밋만** 추려 내고, 그 근거로 경력기술서 문장을 씁니다.
 근거가 없는 수치는 지어내지 않고 빈칸으로 남겨, 사용자가 직접 채우게 합니다.
 
-## 주요 기능 (개발 예정)
+## 주요 기능
 
 - **GitHub 연결**: OAuth로 로그인하고 분석할 레포를 고릅니다.
 - **기여 분석**: 레포별로 본인 커밋과 기간, 비중, 변경 줄 수(lockfile 제외)를 정리합니다.
@@ -65,6 +65,41 @@ npm run dev
 
 http://localhost:3000 에서 확인할 수 있습니다.
 
+`ANTHROPIC_API_KEY`가 없으면 개발 환경에서는 Claude 대신 **개발용 가짜 응답**으로 초안을 만들어요(화면에 배지로 표시). 키가 있어도 `RESUME_MOCK=1`이면 가짜 응답을 써요.
+
+### 테스트
+
+```bash
+npm test          # 단위 테스트 (Vitest)
+npm run test:e2e  # E2E (Playwright, 설치된 Chrome 사용. dev 서버가 떠 있으면 그대로 씀)
+```
+
+E2E는 가짜 응답 모드로 돌고, 로그인이 필요한 흐름은 `.env.local`의 `SESSION_SECRET`으로 테스트용 세션 쿠키를 만들어 확인해요.
+push·PR마다 GitHub Actions(`.github/workflows/ci.yml`)가 lint, 타입 검사, 단위 테스트, 빌드, E2E를 돌려요.
+
+## 배포 (Vercel)
+
+1. Vercel에서 이 레포를 가져와 프로젝트를 만들어요. 설정은 기본값(Next.js) 그대로 두면 돼요.
+2. **Environment Variables** (Production)에 아래 값을 넣어요.
+
+   | 이름 | 값 |
+   | --- | --- |
+   | `APP_URL` | 배포 주소 (예: `https://shipped.vercel.app`) |
+   | `GITHUB_APP_CLIENT_ID` | GitHub App의 Client ID |
+   | `GITHUB_APP_CLIENT_SECRET` | GitHub App의 Client secret |
+   | `GITHUB_APP_SLUG` | GitHub App slug |
+   | `SESSION_SECRET` | **로컬과 다른 새 값** (`node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`) |
+   | `ANTHROPIC_API_KEY` | Claude API 키 |
+
+   `RESUME_MOCK`은 넣지 않아요. 프로덕션에서 API 키가 없으면 가짜 응답 대신 오류를 보여 줘요.
+3. GitHub App 설정에서 **Callback URL을 하나 더 추가**해요: `https://<배포 주소>/api/auth/callback` (로컬 주소는 그대로 둬도 돼요). Homepage URL도 배포 주소로 바꿔도 좋아요.
+4. 배포한 뒤 확인할 것
+   - 로그인 → 레포 목록 → 기여 분석까지 열리는지
+   - 초안 만들기에서 "개발용 가짜 응답" 배지 없이 분석 단계와 초안이 나오는지, 토큰 수가 표시되는지
+   - 로그아웃 후 다시 로그인되는지
+
+경력기술서 생성은 1분 넘게 걸릴 수 있어서 `/api/resume`의 최대 실행 시간을 300초로 두었어요(`maxDuration`). 실제 상한은 Vercel 플랜에 따라 달라요.
+
 ## 진행 상황
 
 | 단계 | 내용 | 상태 |
@@ -75,5 +110,5 @@ http://localhost:3000 에서 확인할 수 있습니다.
 | 4 | 커밋 수집, 본인 기여 분석 | 완료 |
 | 5 | 경력기술서 스트리밍 생성 | 완료 (실제 Claude 호출은 API 키 등록 후 확인) |
 | 6 | 분석 단계 표시 (tool calling) | 완료 |
-| 7 | 구조화 출력, 문장별 수락·거절 | 진행 중 |
-| 8 | 테스트, PDF 내보내기, 배포 | 예정 |
+| 7 | 구조화 출력, 문장별 수락·거절 | 완료 |
+| 8 | 테스트, PDF 내보내기, 배포 | 진행 중 (배포 남음) |

@@ -4,6 +4,9 @@ import { describeResumeError, streamResumeDraft } from '@/server/resume/generate
 import { isResumeMockMode, streamMockResumeDraft } from '@/server/resume/mock';
 import { getSession } from '@/server/session';
 
+/** Claude가 도구를 부르며 분석하면 1분을 넘길 수 있다. 실제 상한은 배포 플랜에 따라 정해진다. */
+export const maxDuration = 300;
+
 function errorResponse(status: number, message: string) {
   return NextResponse.json({ message }, { status });
 }

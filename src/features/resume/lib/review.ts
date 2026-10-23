@@ -40,8 +40,26 @@ export function acceptAllPending(draft: ResumeDraft, review: DraftReview): Draft
   return next;
 }
 
+/** 수락·수정한 문장만 남긴 성과 목록. 남은 문장이 없는 성과는 뺀다. 마크다운·PDF가 같이 쓴다. */
+export function keptAchievements(draft: ResumeDraft, review: DraftReview) {
+  return draft.achievements.flatMap((achievement, a) => {
+    const sentences = achievement.sentences.flatMap((sentence, s) => {
+      const result = getReview(review, sentenceKey(a, s));
+      if (result.status === 'accepted') return [sentence];
+      if (result.status === 'edited') return [{ ...sentence, text: result.text }];
+      return [];
+    });
+    return sentences.length > 0 ? [{ title: achievement.title, sentences }] : [];
+  });
+}
+
+/** 사용자가 채워야 할 빈칸([N], [역할] 등) 개수 */
+export function countBlanks(texts: readonly string[]): number {
+  return texts.reduce((sum, text) => sum + (text.match(/\[[^\]]+\]/g)?.length ?? 0), 0);
+}
+
 /**
- * 수락·수정한 문장만 마크다운으로 만든다. 남은 문장이 없는 성과는 뺀다.
+ * 수락·수정한 문장만 마크다운으로 만든다.
  * 근거 커밋은 사용자가 출처를 확인할 수 있도록 문장 끝에 붙인다.
  */
 export function draftToMarkdown(projectName: string, draft: ResumeDraft, review: DraftReview): string {
@@ -55,21 +73,13 @@ export function draftToMarkdown(projectName: string, draft: ResumeDraft, review:
     summary.techStack.length > 0 ? `- 기술: ${summary.techStack.join(', ')}` : null,
   ].filter((line): line is string => line !== null);
 
-  draft.achievements.forEach((achievement, a) => {
-    const kept = achievement.sentences.flatMap((sentence, s) => {
-      const result = getReview(review, sentenceKey(a, s));
-      if (result.status === 'accepted') return [{ ...sentence }];
-      if (result.status === 'edited') return [{ ...sentence, text: result.text }];
-      return [];
-    });
-    if (kept.length === 0) return;
-
+  for (const achievement of keptAchievements(draft, review)) {
     lines.push('', `### ${achievement.title}`);
-    for (const sentence of kept) {
+    for (const sentence of achievement.sentences) {
       const evidence = sentence.evidence.length > 0 ? ` (근거: ${sentence.evidence.join(', ')})` : '';
       lines.push(`- ${SENTENCE_KIND_LABEL[sentence.kind]}: ${sentence.text}${evidence}`);
     }
-  });
+  }
 
   return lines.join('\n');
 }

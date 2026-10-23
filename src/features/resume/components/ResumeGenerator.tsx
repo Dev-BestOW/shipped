@@ -2,6 +2,7 @@
 
 import { Alert, Badge, Button, Card, Stack, Typography } from '@bestow-ui/react';
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ButtonLink } from '@/components/ui/ButtonLink';
 import type { ContributionCommit } from '@/features/repos/lib/contribution';
 import { useResumeDraft } from '../hooks/useResumeDraft';
@@ -10,12 +11,15 @@ import type { ResumeDraft } from '../lib/draft';
 import { parsePartialDraft } from '../lib/partialDraft';
 import {
   acceptAllPending,
+  countBlanks,
   countReview,
   draftToMarkdown,
+  keptAchievements,
   type DraftReview as DraftReviewState,
 } from '../lib/review';
 import { MAX_RESUME_COMMITS, type ResumeRequest } from '../lib/schema';
 import { DraftPreview, DraftReview, type CommitLookup } from './DraftReview';
+import { PrintableResume } from './PrintableResume';
 
 const numberFormatter = new Intl.NumberFormat('ko-KR');
 
@@ -116,6 +120,8 @@ export function ResumeGenerator({ projectName, commits, share }: Props) {
               onReviewChange={(key, next) => setReview(prev => ({ ...prev, [key]: next }))}
               commits={lookup}
             />
+            {/* 인쇄할 때 다른 화면을 통째로 숨길 수 있도록 body 바로 아래에 둔다. */}
+            {createPortal(<PrintableResume projectName={projectName} draft={state.draft} review={review} />, document.body)}
             <Typography variant="caption" color="subtle">
               노란색으로 표시한 칸은 커밋으로 확인할 수 없는 내용이에요. 직접 채워 주세요.
               {!state.mock &&
@@ -156,6 +162,20 @@ function ReviewToolbar({
   const [copied, setCopied] = useState(false);
   const counts = countReview(draft, review);
   const kept = counts.accepted + counts.edited;
+  const blanks = countBlanks([
+    draft.summary.overview,
+    draft.summary.period,
+    draft.summary.role,
+    ...keptAchievements(draft, review).flatMap(achievement => achievement.sentences.map(sentence => sentence.text)),
+  ]);
+
+  /** 브라우저 인쇄 창을 연다. 저장할 PDF 파일 이름이 되도록 인쇄하는 동안만 문서 제목을 바꾼다. */
+  function print() {
+    const previousTitle = document.title;
+    document.title = `${projectName} 경력기술서`;
+    window.addEventListener('afterprint', () => (document.title = previousTitle), { once: true });
+    window.print();
+  }
 
   async function copy() {
     try {
@@ -169,15 +189,25 @@ function ReviewToolbar({
 
   return (
     <Stack direction={{ base: 'column', md: 'row' }} justify="between" align={{ base: 'start', md: 'center' }} gap={3}>
-      <Typography variant="body-sm" color="muted" role="status">
-        수락 {counts.accepted} · 수정 {counts.edited} · 거절 {counts.rejected} · 남음 {counts.pending}
-      </Typography>
-      <Stack direction="row" gap={2}>
+      <Stack gap={1}>
+        <Typography variant="body-sm" color="muted" role="status">
+          수락 {counts.accepted} · 수정 {counts.edited} · 거절 {counts.rejected} · 남음 {counts.pending}
+        </Typography>
+        {kept > 0 && blanks > 0 && (
+          <Typography variant="caption" color="warning">
+            수락한 문장에 채우지 않은 칸이 {blanks}개 있어요. 수정으로 채운 뒤 저장하세요.
+          </Typography>
+        )}
+      </Stack>
+      <Stack direction="row" gap={2} wrap>
         <Button size="sm" variant="outline" color="neutral" onClick={onAcceptAll} disabled={counts.pending === 0}>
           남은 문장 모두 수락
         </Button>
-        <Button size="sm" onClick={copy} disabled={kept === 0}>
+        <Button size="sm" variant="outline" color="neutral" onClick={copy} disabled={kept === 0}>
           {copied ? '복사됨' : `수락한 문장 ${kept}개 복사`}
+        </Button>
+        <Button size="sm" onClick={print} disabled={kept === 0}>
+          PDF로 저장
         </Button>
       </Stack>
     </Stack>

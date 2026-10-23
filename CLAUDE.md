@@ -24,9 +24,12 @@ npm run dev      # 개발 서버 (http://localhost:3000)
 npm run build    # 프로덕션 빌드
 npm run lint     # ESLint
 npx tsc --noEmit # 타입 검사
+npm test         # 단위 테스트 (Vitest, src/**/*.test.ts)
+npm run test:e2e # E2E (Playwright, e2e/)
 ```
 
-작업을 마치면 `lint`, `tsc`, `build`를 통과하는지 확인한다.
+작업을 마치면 `lint`, `tsc`, `test`, `build`를 통과하는지 확인한다. 화면 흐름을 바꿨으면 `test:e2e`도 돌린다.
+순수 로직(lib, 서버 분석 함수)을 바꾸면 옆의 `*.test.ts`도 함께 고친다.
 
 ## 폴더 구조
 

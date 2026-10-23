@@ -9,6 +9,9 @@ import { ResumeGenerator } from '@/features/resume/components/ResumeGenerator';
 import { addLineStats, getMyRepoContribution } from '@/server/github/commits';
 import { requireSession, withTokenRefresh } from '@/server/session';
 
+/** 커밋마다 상세 API를 부르므로(최대 500번) 기본 실행 시간보다 넉넉히 둔다. */
+export const maxDuration = 120;
+
 /** GitHub 계정·레포 이름에 쓸 수 있는 문자 */
 const NAME_PATTERN = /^[A-Za-z0-9._-]+$/;
 
