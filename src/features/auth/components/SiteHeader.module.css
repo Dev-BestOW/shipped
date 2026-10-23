@@ -1,0 +1,12 @@
+.header {
+  border-bottom: 1px solid var(--bestow-color-border-default);
+}
+
+.bar {
+  min-height: 56px;
+}
+
+.logo {
+  font-weight: var(--bestow-font-weight-bold);
+  letter-spacing: -0.01em;
+}

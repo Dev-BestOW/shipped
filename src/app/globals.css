@@ -1,0 +1,24 @@
+/* 컴포넌트 스타일은 @bestow-ui/react가 맡는다. 여기에는 문서 전체에 필요한 최소한만 둔다. */
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  font-family: var(--bestow-font-family-sans);
+  -webkit-font-smoothing: antialiased;
+  word-break: keep-all;
+}
+
+/* 경력기술서 PDF 저장(인쇄). PrintableResume을 body 바로 아래에 두고, 인쇄할 때는 그것만 남긴다. */
+@page {
+  size: A4;
+  margin: 16mm 18mm;
+}
+
+@media print {
+  body:has(> [data-print-root]) > :not([data-print-root]) {
+    display: none !important;
+  }
+}

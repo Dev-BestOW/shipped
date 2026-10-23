@@ -1,0 +1,76 @@
+/* @bestow-ui/react Button(Button.css.ts)과 같은 토큰을 쓴다. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--bestow-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--bestow-radius-md);
+  font-family: var(--bestow-font-family-sans);
+  font-weight: var(--bestow-font-weight-semibold);
+  line-height: var(--bestow-font-line-height-tight);
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background-color var(--bestow-duration-fast),
+    border-color var(--bestow-duration-fast),
+    color var(--bestow-duration-fast);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--bestow-color-border-focus);
+  outline-offset: 2px;
+}
+
+.primary {
+  --accent-solid: var(--bestow-color-primary-solid);
+  --accent-solid-hover: var(--bestow-color-primary-solid-hover);
+  --accent-contrast: var(--bestow-color-primary-contrast);
+  --accent-subtle: var(--bestow-color-primary-subtle);
+  --accent-text: var(--bestow-color-primary-text);
+}
+
+.neutral {
+  --accent-solid: var(--bestow-color-neutral-solid);
+  --accent-solid-hover: var(--bestow-color-neutral-solid-hover);
+  --accent-contrast: var(--bestow-color-neutral-contrast);
+  --accent-subtle: var(--bestow-color-neutral-subtle);
+  --accent-text: var(--bestow-color-neutral-text);
+}
+
+.solid {
+  background-color: var(--accent-solid);
+  color: var(--accent-contrast);
+}
+
+.solid:hover {
+  background-color: var(--accent-solid-hover);
+}
+
+.outline {
+  background-color: transparent;
+  border-color: var(--accent-solid);
+  color: var(--accent-text);
+}
+
+.outline:hover {
+  background-color: var(--accent-subtle);
+}
+
+.sm {
+  min-height: 32px;
+  padding-inline: var(--bestow-space-3);
+  font-size: var(--bestow-font-size-sm);
+}
+
+.md {
+  min-height: 40px;
+  padding-inline: var(--bestow-space-4);
+  font-size: var(--bestow-font-size-sm);
+}
+
+.lg {
+  min-height: 48px;
+  padding-inline: var(--bestow-space-5);
+  font-size: var(--bestow-font-size-md);
+}
