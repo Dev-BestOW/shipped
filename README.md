@@ -51,8 +51,11 @@ npm run dev
 
 | 항목 | 값 |
 | --- | --- |
+| GitHub App name | GitHub 전체에서 겹치지 않는 이름 (예: `shipped-<아이디>`) |
+| Homepage URL | 레포 주소 등 아무 URL (로그인 동작에는 쓰이지 않음) |
 | Callback URL | `http://localhost:3000/api/auth/callback` |
 | Expire user authorization tokens | 체크 (refresh token 사용) |
+| Request user authorization (OAuth) during installation | 체크 해제 (켜면 설치 직후 state 없이 콜백이 와서 실패) |
 | Webhook | Active 체크 해제 |
 | Repository permissions | Contents: Read-only, Metadata: Read-only |
 | Where can this GitHub App be installed? | Any account |
@@ -67,7 +70,7 @@ http://localhost:3000 에서 확인할 수 있습니다.
 | --- | --- | --- |
 | 1 | 프로젝트 기본 세팅 | 완료 |
 | 2 | 프로젝트 규칙 정리 (`CLAUDE.md`, README) | 완료 |
-| 3 | GitHub 로그인과 레포 목록 | 진행 중 |
+| 3 | GitHub 로그인과 레포 목록 | 완료 |
 | 4 | 커밋 수집, 본인 기여 분석 | 예정 |
 | 5 | 경력기술서 스트리밍 생성 | 예정 |
 | 6 | 분석 단계 표시 (tool calling) | 예정 |
